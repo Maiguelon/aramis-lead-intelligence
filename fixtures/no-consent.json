@@ -1,0 +1,10 @@
+{
+  "submission_id": "demo-no-consent-001",
+  "source_form": "footer",
+  "nombre": "Irene Sosa",
+  "email": "irene@example.test",
+  "mensaje": "Quisiera una página web.",
+  "consentimiento_contacto": false,
+  "consentimiento_texto_version": "contact-v1",
+  "consentimiento_fecha": "2026-09-30T17:00:00Z"
+}

@@ -1,0 +1,14 @@
+{
+  "submission_id": "demo-plan-001",
+  "source_form": "plan_card",
+  "nombre": "Mateo Vega",
+  "contacto": "mateo@example.test",
+  "redes": "@mateovega",
+  "plan": "{\"selections\":{\"posts\":4,\"reels\":2,\"ads\":false,\"pagina\":true},\"precioMensual\":250000,\"costoUnicos\":90000}",
+  "consentimiento_contacto": true,
+  "consentimiento_texto_version": "contact-v1",
+  "consentimiento_fecha": "2026-09-30T16:00:00Z",
+  "utm_source": "google",
+  "utm_medium": "cpc",
+  "utm_campaign": "services-demo"
+}

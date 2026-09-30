@@ -1,0 +1,14 @@
+{
+  "submission_id": "demo-footer-001",
+  "source_form": "footer",
+  "nombre": "Lucía Ríos",
+  "email": "lucia@example.test",
+  "redes": "@luciaestudio",
+  "mensaje": "Quisiera consultar por identidad visual para mi estudio.",
+  "consentimiento_contacto": true,
+  "consentimiento_texto_version": "contact-v1",
+  "consentimiento_fecha": "2026-09-30T15:00:00Z",
+  "utm_source": "instagram",
+  "utm_medium": "social",
+  "utm_campaign": "brand-demo"
+}
