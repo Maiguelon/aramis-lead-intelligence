@@ -1,0 +1,240 @@
+{
+  "id": "aramis-leadops-demo",
+  "name": "Aramis LeadOps — demo ficticia (sin credenciales)",
+  "nodes": [
+    {
+      "id": "leadops-manual",
+      "name": "Ejecutar demo",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        160,
+        320
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "leadops-scenarios",
+      "name": "Cinco escenarios ficticios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        320
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "\nconst footer = { submission_id: 'demo-footer-001', source_form: 'footer', nombre: 'Lucía Ríos', email: 'lucia@example.test', mensaje: 'Quisiera consultar por identidad visual para mi estudio.', consentimiento_contacto: true, consentimiento_texto_version: 'contact-v1', utm_source: 'instagram', utm_medium: 'social', utm_campaign: 'brand-demo' };\nconst plan = { submission_id: 'demo-plan-001', source_form: 'plan_card', nombre: 'Mateo Vega', contacto: 'mateo@example.test', plan: JSON.stringify({ selections: { posts: 4, reels: 2, pagina: true } }), consentimiento_contacto: true, consentimiento_texto_version: 'contact-v1', utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'services-demo' };\nreturn [footer, footer, { ...footer, submission_id: 'demo-footer-002', mensaje: 'Ahora necesito una página web.' }, plan, { ...footer, submission_id: 'demo-denied-001', consentimiento_contacto: false }].map((json) => ({ json }));"
+      }
+    },
+    {
+      "id": "leadops-normalize",
+      "name": "Consentimiento + normalización",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        320
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "\nconst seen = new Set();\nreturn $input.all().map(({ json: raw }) => {\n  const id = typeof raw.submission_id === 'string' ? raw.submission_id.trim() : '';\n  const form = typeof raw.source_form === 'string' ? raw.source_form.trim() : '';\n  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{2,159}$/.test(id)) return { json: { status: 'manual_review', reason: 'invalid_submission_id' } };\n  if (raw.consentimiento_contacto !== true || !raw.consentimiento_texto_version) return { json: { status: 'rejected', reason: 'contact_consent_not_explicit', submissionId: id } };\n  const email = String(raw.email || raw.contacto || '').trim().toLowerCase();\n  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return { json: { status: 'manual_review', reason: 'missing_or_ambiguous_identity', submissionId: id } };\n  const key = form + ':' + id;\n  if (seen.has(key)) return { json: { status: 'duplicate', reason: 'already_processed', submissionId: id } };\n  seen.add(key);\n  let plan = null;\n  try { plan = raw.plan ? JSON.parse(raw.plan) : null; } catch {}\n  const request = String(raw.mensaje || '').slice(0, 2000);\n  const services = [];\n  if (/identidad|marca|branding|logo/i.test(request)) services.push('identidad_visual');\n  if (/página|pagina|sitio|web/i.test(request) || plan?.selections?.pagina) services.push('pagina_web');\n  if (/redes|social|reels|publicidad/i.test(request) || plan?.selections?.posts || plan?.selections?.reels) services.push('redes_sociales');\n  return { json: { status: 'accepted', intake: { id, sourceForm: form, email, name: String(raw.nombre || '').slice(0, 160), message: request, serviceHints: services, utm: { source: raw.utm_source || 'unknown', medium: raw.utm_medium || 'unknown', campaign: raw.utm_campaign || 'unknown' }, consentNotice: raw.consentimiento_texto_version, consentAt: new Date().toISOString() } } };\n});"
+      }
+    },
+    {
+      "id": "leadops-accepted",
+      "name": "¿Entrada aceptada?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        860,
+        320
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "accepted-condition",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "accepted",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "leadops-crm",
+      "name": "CRM simulado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        220
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "\nconst contacts = new Map();\nreturn $input.all().map(({ json }) => {\n  const { intake } = json;\n  const existing = contacts.get(intake.email);\n  const contactId = existing || String(10000 + contacts.size);\n  if (!existing) contacts.set(intake.email, contactId);\n  return { json: { ...json, crm: { mode: 'SIMULATED', contactId, contactCreated: !existing, noteId: 'note-' + intake.id, taskId: 'task-' + intake.id, taskStatus: 'NOT_STARTED' } } };\n});"
+      }
+    },
+    {
+      "id": "leadops-research",
+      "name": "Agente 1 · resumen simulado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1330,
+        220
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "\nreturn $input.all().map(({ json }) => {\n  const { intake } = json;\n  const summary = intake.message || 'Consulta sin detalle; revisar las selecciones del plan.';\n  return { json: { ...json, research: { summary, verifiedFacts: intake.message ? [{ fact: intake.message, source: 'intake:message' }] : [], externalFacts: [], missingInformation: [ ...(intake.message ? [] : ['detalle de la necesidad']), 'presupuesto', 'plazo' ], researchStatus: 'not_performed' } } };\n});"
+      }
+    },
+    {
+      "id": "leadops-qualify",
+      "name": "Agente 2 · encaje simulado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1570,
+        220
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "\nreturn $input.all().map(({ json }) => {\n  const { intake, research } = json;\n  const hasService = intake.serviceHints.length > 0;\n  const hasDetail = Boolean(intake.message);\n  const fit = hasService && hasDetail ? 'high_fit' : hasService ? 'possible_fit' : 'insufficient_information';\n  return { json: { ...json, qualification: { fit, certainty: hasService && hasDetail ? 'medium' : 'low', rationale: hasService ? 'La necesidad expresada coincide con servicios de Aramis; confirmar contexto antes de contactar.' : 'Faltan datos para evaluar el encaje.', missingInformation: research.missingInformation, signals: hasService ? [{ signal: intake.serviceHints.join(', '), source: intake.message ? 'intake:message' : 'intake:plan' }] : [], humanReviewRequired: true, mode: 'DETERMINISTIC STUB — no AI call' } } };\n});"
+      }
+    },
+    {
+      "id": "leadops-card",
+      "name": "Tarjeta de revisión",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1810,
+        220
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "\nconst escape = (v) => String(v ?? '').replace(/[&<>\"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' })[c]);\nreturn $input.all().map(({ json }) => {\n  const { intake, crm, research, qualification } = json;\n  const html = '<div style=\"font-family:Arial;max-width:600px;color:#1b2a41\"><h1 style=\"background:#1b2a41;color:white;padding:18px;border-bottom:5px solid #f4b943\">LeadOps · revisión humana</h1><p><b>DEMO FICTICIA: no se envió correo ni se escribió en HubSpot.</b></p><p><b>Encaje:</b> ' + escape(qualification.fit) + ' · <b>Certeza:</b> ' + escape(qualification.certainty) + '</p><p>' + escape(qualification.rationale) + '</p><p><b>Persona:</b> ' + escape(intake.name) + ' (' + escape(intake.email) + ')</p><p><b>Resumen:</b> ' + escape(research.summary) + '</p><p><b>Faltantes:</b> ' + escape(qualification.missingInformation.join(', ')) + '</p><p><b>Fuente:</b> ' + escape(intake.sourceForm) + ' / ' + escape(intake.utm.source) + '</p><p><b>Contacto simulado:</b> ' + escape(crm.contactId) + ' · tarea abierta ' + escape(crm.taskId) + '</p></div>';\n  return { json: { scenario: intake.id, status: 'review_ready', simulatedCrm: crm, qualification, cardHtml: html } };\n});"
+      }
+    },
+    {
+      "id": "leadops-reject",
+      "name": "Rechazos y repetidos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1110,
+        480
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return $input.all().map(({ json }) => ({ json: { scenario: json.submissionId || 'unknown', status: json.status, reason: json.reason, effects: [] } }));"
+      }
+    }
+  ],
+  "connections": {
+    "Ejecutar demo": {
+      "main": [
+        [
+          {
+            "node": "Cinco escenarios ficticios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cinco escenarios ficticios": {
+      "main": [
+        [
+          {
+            "node": "Consentimiento + normalización",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consentimiento + normalización": {
+      "main": [
+        [
+          {
+            "node": "¿Entrada aceptada?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Entrada aceptada?": {
+      "main": [
+        [
+          {
+            "node": "CRM simulado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rechazos y repetidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM simulado": {
+      "main": [
+        [
+          {
+            "node": "Agente 1 · resumen simulado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente 1 · resumen simulado": {
+      "main": [
+        [
+          {
+            "node": "Agente 2 · encaje simulado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente 2 · encaje simulado": {
+      "main": [
+        [
+          {
+            "node": "Tarjeta de revisión",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {},
+  "tags": []
+}
