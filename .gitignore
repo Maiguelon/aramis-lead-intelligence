@@ -7,3 +7,4 @@ dist/
 work/
 *.log
 .tmp/
+demo-output/

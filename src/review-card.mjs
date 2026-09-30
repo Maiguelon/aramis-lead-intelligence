@@ -22,8 +22,8 @@ export function renderReviewCard({ intake, research, qualification, portalId, co
     const safeUrl = /^https:\/\//i.test(item.source) ? item.source : null;
     return `<li>${escapeHtml(item.fact)}${safeUrl ? ` — <a href="${escapeHtml(safeUrl)}">fuente</a>` : ' — fuente no verificada'}</li>`;
   }).join('');
-  const content = `<!doctype html><html lang="es"><body style="font-family:Arial,sans-serif;color:#16243a;max-width:620px;margin:auto">
-    <div style="background:#132a46;color:#fff;padding:18px 22px"><h1 style="margin:0;font-size:21px">Nueva consulta · revisar</h1></div>
+  const content = `<!doctype html><html lang="es"><body style="font-family:Lato,Arial,sans-serif;color:#1b2a41;max-width:620px;margin:auto">
+    <div style="background:#1b2a41;color:#fff;padding:18px 22px;border-bottom:5px solid #f4b943"><h1 style="margin:0;font-size:21px">Nueva consulta · revisar</h1></div>
     <div style="padding:20px;border:1px solid #d9e2ed">
       <p style="background:#fff1cb;padding:10px"><strong>Revisión humana obligatoria.</strong> La calificación es una recomendación, no una decisión.</p>
       <h2 style="font-size:18px">${escapeHtml(LABELS[qualification.fit] || 'Sin calificar')} · certeza ${escapeHtml(qualification.certainty)}</h2>
@@ -32,7 +32,7 @@ export function renderReviewCard({ intake, research, qualification, portalId, co
       <h3>Resumen</h3><p>${escapeHtml(research.summary)}</p>
       <h3>Faltantes</h3><p>${escapeHtml(qualification.missingInformation.join(', ') || 'Ninguno señalado')}</p>
       ${facts ? `<h3>Fuentes públicas</h3><ul>${facts}</ul>` : '<p>No hubo hallazgos públicos verificados.</p>'}
-      <p><a href="${url}" style="background:#176aab;color:#fff;padding:11px 16px;display:inline-block;text-decoration:none">Abrir contacto en HubSpot</a></p>
+      <p><a href="${url}" style="background:#8b2634;color:#fff;padding:11px 16px;display:inline-block;text-decoration:none">Abrir contacto en HubSpot</a></p>
       <small>ID de entrada: ${escapeHtml(intake.id)} · Consentimiento para responder registrado; no implica permiso para campañas.</small>
     </div></body></html>`;
   return {
