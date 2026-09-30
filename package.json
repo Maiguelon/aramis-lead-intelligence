@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "node --check src/intake.mjs && node --check src/qualification.mjs && node --check src/openai-agents.mjs && node --check src/hubspot.mjs && node --check src/review-card.mjs && node --test"
+    "check": "node --check src/intake.mjs && node --check src/qualification.mjs && node --check src/openai-agents.mjs && node --check src/hubspot.mjs && node --check src/review-card.mjs && node --check src/pipeline.mjs && node --check src/file-ledger.mjs && node --test"
   },
   "engines": {
     "node": ">=22"
