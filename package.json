@@ -1,0 +1,13 @@
+{
+  "name": "aramis-leadops",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/intake.mjs && node --check src/qualification.mjs && node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
