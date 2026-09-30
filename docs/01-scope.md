@@ -29,7 +29,7 @@ The consent flag covers a response to the submitted inquiry. It does not opt the
 
 ## Human decision model
 
-1. Valid, explicitly permitted intake receives an identity check and a HubSpot contact marked `pending_review`.
+1. Valid, explicitly permitted intake receives an identity check and a HubSpot contact with an open review task. That task is the MVP's `pending_review` signal; no custom property is assumed before portal setup.
 2. Research/summarization agent may extract the request and public company context. Every claimed external fact must carry a URL or be marked unverified.
 3. Qualification agent may recommend `high_fit`, `possible_fit`, `low_fit`, or `insufficient_information`; it separately reports `high`, `medium`, or `low` certainty and cites the intake fields or research sources behind each signal.
 4. No AI result may set consent, create a deal, discard a contact, send prospect outreach, or override a human owner/stage.
@@ -55,7 +55,7 @@ Only fake data enters committed fixtures and public screenshots. Metrics in the 
 
 ## Decisions for implementation
 
-- HubSpot: contacts, owner, lifecycle, review status, notes/tasks and optional company association; reserve custom properties within the Free tier limit.
+- HubSpot: contacts, owner, lifecycle, open review task, note and optional company association. Avoid custom properties in the first pass; use the dated 2026-03 CRM API and retest before moving versions.
 - n8n: intake, routing, API calls, alerts, and error workflow. Portable workflow export committed in this repository.
 - OpenAI: structured outputs for two separate analyses. Deterministic fixture mode for a free, reproducible demo.
 - Email: concise card with a HubSpot link, recommendation, certainty, sources, missing data, and explicit `human review required` label.
