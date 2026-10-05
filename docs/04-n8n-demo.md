@@ -2,6 +2,8 @@
 
 `n8n/leadops-demo.json` is a native, importable n8n workflow. It was imported and executed successfully with n8n 2.41.3 in an isolated local test instance on 2026-09-30. The workflow has no credentials, external HTTP calls, CRM writes or email delivery.
 
+After rebuilding the local Docker instance on 2026-10-05, the same export was imported and executed with n8n 2.41.7: execution status `success`, three review cards, one duplicate and one consent rejection. The imported workflow remains inactive and is ready to inspect in the editor once the local owner setup is completed.
+
 ## Show it
 
 1. In n8n, import `n8n/leadops-demo.json` as a workflow. Leave it inactive.

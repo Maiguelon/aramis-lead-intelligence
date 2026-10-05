@@ -16,6 +16,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/n8n.ps1 Stop
 
 Open [localhost:5678](http://localhost:5678). On first launch, create the local instance owner in the browser using your own email and password. This is separate from a n8n Cloud account. Enter provider secrets only in n8n credentials, never in workflow parameters or chat.
 
+To restore the credential-free portfolio demo into a fresh instance:
+
+```powershell
+docker compose exec -T n8n n8n import:workflow --input=/opt/leadops/workflows/leadops-demo.json
+```
+
+This imports the reviewed export with ID `aramis-leadops-demo`. On an existing instance, that command replaces the workflow with that same ID, so back up any local edits first. The fresh instance rebuilt on 2026-10-05 already has this workflow imported.
+
 The service binds to `127.0.0.1`, so it is reachable only from this computer. It uses local HTTP and restarts with Docker unless explicitly stopped. This is a development instance; external forms cannot deliver webhooks to it from the internet.
 
 The bundled JavaScript task runner is sufficient for the demo. n8n currently logs a warning that its optional Python runner is unavailable and that internal runner mode is deprecated. LeadOps uses JavaScript, so neither warning prevents this local test. Review external runners before deploying an always-on production instance.
@@ -31,6 +39,8 @@ The bundled JavaScript task runner is sufficient for the demo. n8n currently log
 n8n generates the encryption key on first launch and saves it in `.local/n8n/config`. Keep that file with the database. Recreating a container preserves the bind-mounted data; deleting `.local/n8n` loses it. Successful and failed execution data is retained for up to seven days, subject to a 1,000-execution limit.
 
 Pushing the repository lets you reconstruct the automation, but does not back up the private instance. A backup on the same disk also does not protect against disk failure. Keep a private copy of the complete instance backup on another disk or a secure remote location.
+
+Use `scripts/backup-n8n.ps1` for that private snapshot. See the [backup and commit procedure](06-backup-and-commits.md) for what it includes and how to restore it.
 
 ## Verification
 
