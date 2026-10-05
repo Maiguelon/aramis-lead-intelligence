@@ -8,3 +8,4 @@ work/
 *.log
 .tmp/
 demo-output/
+.local/

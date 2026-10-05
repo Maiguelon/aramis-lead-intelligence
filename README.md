@@ -34,6 +34,8 @@ The demo writes `demo-output/report.json` and three HTML review cards. It exerci
 
 There is also a [native n8n demo workflow](n8n/leadops-demo.json) with the consent gate, simulated CRM handoff, two visibly separate analysis steps and review card. It was imported and executed successfully with n8n 2.41.3, without credentials or external writes. See [how to show it](docs/04-n8n-demo.md).
 
+To rebuild the local n8n instance after a machine or disk change, use the pinned Docker Compose setup and [local operating guide](docs/05-local-n8n.md). Private instance data is excluded from Git; workflow exports and rebuild instructions are versioned.
+
 ## Implementation status
 
 | Capability | State |
@@ -54,5 +56,6 @@ The current Aramis site submits through Formspree Free, which does not provide t
 - [HubSpot field mapping and reviewer handoff](docs/02-crm-mapping.md)
 - [Idempotency and failure recovery](docs/03-recovery.md)
 - [n8n offline walkthrough and live-pilot gap](docs/04-n8n-demo.md)
+- [Local n8n setup and persistence](docs/05-local-n8n.md)
 
 Only fake records belong in committed fixtures or screenshots. Never commit API keys, real submissions or personal data. Existing Aramis-Web, GestorAramis and AramisEditorial repositories remain untouched.
