@@ -27,10 +27,10 @@ This was a schema and permission inspection, not an audit of CRM data. No contac
 3. Note/task association definitions, contact-write scope, and a controlled fictional contact + note + task smoke test.
 4. Internal email delivery and the full intake/replay/failure scenarios with provider credentials.
 
-## Local runtime blocker
+## Local runtime blocker observed during inspection
 
 The existing `.local/n8n/database.sqlite` and `.local/n8n/config` files are still present. Their presence alone is not a database-integrity or credential-decryption test.
 
 Docker Desktop 4.76.0 failed during startup while trying to replace its `dockerInference` runtime endpoint. The local endpoint is a zero-byte `Archive, ReparsePoint` object, and backend logs report Windows access/name errors. The engine pipe does not become available. This matches a failure class reported in [Docker's issue tracker](https://github.com/docker/desktop-feedback/issues/625); that issue includes a maintainer's report of fixes in 4.92, but an upgrade has not been tested on this machine. Do not assume disabling Model Runner resolves the issue: reports show its listener can still initialize.
 
-No factory reset, prune, data-directory removal, settings modification, diagnostic upload or Docker update was performed. Global Docker repair would modify files outside the repository, so it requires an explicit exception to the user's workspace-only write constraint. Preserve containers, volumes and their data disks in any agreed repair plan.
+At this inspection checkpoint, no factory reset, prune, data-directory removal, settings modification, diagnostic upload or Docker update had been performed. Miguel subsequently authorized the required exception to the workspace-only write constraint. Docker and n8n were recovered while preserving data; see the [recovery and verification record](09-docker-recovery.md).

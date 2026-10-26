@@ -48,4 +48,4 @@ If the UI does not offer Service Keys or the scope, stop and check the account's
 
 All 31 automated checks passed on 2026-10-26, including success, credential and provider errors, response sanitization, and the workflow's sole allowed search endpoint. The export was also imported successfully with the native n8n 2.41.3 CLI into a fresh isolated validation folder under `.tmp/`, without provider credentials or API execution. This confirms native import, not an authenticated HubSpot connection.
 
-On 2026-10-26 the local Docker Desktop startup failed with an Inference Manager error, so this new workflow was not yet imported into the real local instance. No HubSpot credential or CRM record has been created by the implementation agent.
+On 2026-10-26 Docker Desktop initially failed with an Inference Manager error. After the [authorized runtime recovery](09-docker-recovery.md), the workflow was imported successfully into the real local n8n 2.41.7 instance. It remains unconfigured and inactive: no authenticated API execution, HubSpot credential or CRM record has been created by the implementation agent.

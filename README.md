@@ -62,6 +62,7 @@ The current Aramis site submits through Formspree Free, which does not provide t
 - [Local n8n setup and persistence](docs/05-local-n8n.md)
 - [Private backup, restore and commit checkpoints](docs/06-backup-and-commits.md)
 - [HubSpot Service Key and read-only connection check](docs/07-hubspot-connection.md)
-- [Connected portal verification and runtime blocker](docs/08-portal-verification.md)
+- [Connected portal verification](docs/08-portal-verification.md)
+- [Docker recovery and verified local runtime](docs/09-docker-recovery.md)
 
 Only fake records belong in committed fixtures or screenshots. Never commit API keys, real submissions or personal data. Existing Aramis-Web, GestorAramis and AramisEditorial repositories remain untouched.
