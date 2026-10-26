@@ -47,6 +47,7 @@ To rebuild the local n8n instance after a machine or disk change, use the pinned
 | Internal email card | Rendered and tested offline; real delivery not yet connected |
 | n8n visual offline workflow | Imported and executed with n8n 2.41.3; all provider actions simulated |
 | Persistent local n8n runtime | Docker Compose on 2.41.7; demo imported and executed after the rebuild |
+| HubSpot connection check | Read-only workflow export and unit tests; authenticated execution pending |
 | Live n8n automation and end-to-end pilot | Pending account credentials, persistent event store and portal smoke tests |
 
 The current Aramis site submits through Formspree Free, which does not provide the webhook needed for this live trigger. We will not modify the existing website or pretend it already feeds HubSpot. A standalone consented intake or a later form-tier/site change is needed for live traffic.
@@ -59,5 +60,6 @@ The current Aramis site submits through Formspree Free, which does not provide t
 - [n8n offline walkthrough and live-pilot gap](docs/04-n8n-demo.md)
 - [Local n8n setup and persistence](docs/05-local-n8n.md)
 - [Private backup, restore and commit checkpoints](docs/06-backup-and-commits.md)
+- [HubSpot Service Key and read-only connection check](docs/07-hubspot-connection.md)
 
 Only fake records belong in committed fixtures or screenshots. Never commit API keys, real submissions or personal data. Existing Aramis-Web, GestorAramis and AramisEditorial repositories remain untouched.
