@@ -2,6 +2,8 @@
 
 The fictional demonstration can run without a HubSpot account. A live connection awaits credentials and portal-level validation; **no real account write has been attempted**.
 
+The connected portal's base object availability, field names and lifecycle/task options were verified read-only on 2026-10-26. See the [verification record](08-portal-verification.md) for evidence and the remaining API/association checks. This confirms schema compatibility, not authenticated n8n operation.
+
 ## Object model
 
 | Intake fact | HubSpot destination | Rule |
