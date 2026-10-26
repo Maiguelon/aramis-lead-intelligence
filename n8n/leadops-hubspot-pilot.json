@@ -1,0 +1,618 @@
+{
+  "id": "aramis-hubspot-crm-pilot",
+  "name": "Aramis LeadOps — piloto CRM ficticio (preview por defecto)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "pilot-start",
+      "name": "Ejecutar prueba CRM",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        120,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "pilot-config",
+      "name": "Modo y portal",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        340,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "pilot-mode",
+              "name": "mode",
+              "value": "preview",
+              "type": "string"
+            },
+            {
+              "id": "pilot-portal",
+              "name": "portalId",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "pilot-owner",
+              "name": "ownerId",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "pilot-confirm",
+              "name": "confirmFictionalWrites",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "pilot-prepare",
+      "name": "Preparar prueba ficticia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        570,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const requestFor = function hubspotRequest(operation, values = {}) {\n  const objectsPath = '/crm/objects/2026-03';\n  const fail = code => { const error = new Error(code); error.code = code; throw error; };\n  const objectId = value => {\n    const id = String(value ?? '');\n    if (!/^\\d+$/.test(id)) fail('invalid_hubspot_object_id');\n    return id;\n  };\n  const associations = (id, typeId) => [{ to: { id: objectId(id) }, types: [\n    { associationCategory: 'HUBSPOT_DEFINED', associationTypeId: typeId },\n  ] }];\n  const escapeHtml = value => String(value ?? '').replace(/[&<>\"']/g, character => ({\n    '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;',\n  })[character]);\n  const request = (objectType, body) => ({ method: 'POST', path: `${objectsPath}/${objectType}`, body });\n\n  if (operation === 'search_contact') {\n    const { propertyName, value } = values;\n    if (!['email', 'phone'].includes(propertyName) || typeof value !== 'string' || !value) {\n      fail('invalid_contact_search');\n    }\n    return request('contacts/search', {\n      filterGroups: [{ filters: [{ propertyName, operator: 'EQ', value }] }],\n      properties: ['email', 'phone', 'firstname', 'lastname', 'hubspot_owner_id', 'lifecyclestage'], limit: 3,\n    });\n  }\n\n  const { intake, ownerId = null } = values;\n  if (!intake) fail('missing_intake');\n  if (operation === 'create_contact') {\n    const properties = { lifecyclestage: 'lead' };\n    if (intake.email) properties.email = intake.email;\n    if (intake.phone) properties.phone = intake.phone;\n    if (!intake.email && !intake.phone) fail('missing_contact_identity');\n    if (intake.name) properties.firstname = intake.name;\n    if (ownerId != null) properties.hubspot_owner_id = objectId(ownerId);\n    return request('contacts', { properties });\n  }\n\n  if (operation === 'create_note') {\n    const { research, qualification, contactId } = values;\n    const lines = [\n      `LeadOps submission: ${intake.id}`,\n      `Fuente: ${intake.sourceForm}; URL: ${intake.sourceUrl || 'unknown'}`,\n      `UTM: ${JSON.stringify(intake.utm)}`,\n      `Consentimiento para responder: sí; aviso: ${intake.consent.noticeVersion}; registrado: ${intake.consent.recordedAt}`,\n      `Solicitud: ${intake.message || 'Sin mensaje'}`,\n      `Resumen: ${research.summary}`,\n      `Encaje sugerido: ${qualification.fit}; certeza: ${qualification.certainty}; revisión humana obligatoria`,\n      `Motivo: ${qualification.rationale}`,\n      `Faltantes: ${qualification.missingInformation.join(', ') || 'ninguno'}`,\n      ...research.externalFacts.map(item => `Fuente pública: ${item.fact} — ${item.source}`),\n    ];\n    return request('notes', {\n      properties: { hs_timestamp: intake.consent.recordedAt, hs_note_body: lines.map(escapeHtml).join('<br>').slice(0, 12000) },\n      associations: associations(contactId, 202),\n    });\n  }\n\n  if (operation === 'create_task') {\n    const { contactId, dueAt } = values;\n    if (typeof dueAt !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T/.test(dueAt) || Number.isNaN(new Date(dueAt).getTime())) {\n      fail('invalid_task_due_at');\n    }\n    const properties = {\n      hs_timestamp: new Date(dueAt).toISOString(),\n      hs_task_subject: `Revisar consulta LeadOps ${intake.id}`,\n      hs_task_body: 'Revisar la nota, validar encaje y certeza, decidir responsable y siguiente paso. No contactar automáticamente.',\n      hs_task_status: 'NOT_STARTED', hs_task_priority: 'MEDIUM',\n    };\n    if (ownerId != null) properties.hubspot_owner_id = objectId(ownerId);\n    return request('tasks', { properties, associations: associations(contactId, 204) });\n  }\n  fail('unknown_hubspot_operation');\n};\nconst prepare = function prepareCrmPilot(config, bundle, nowIso, requestFor) {\n  const mode = config?.mode || 'preview';\n  const state = { status: 'blocked', reason: 'invalid_mode', mode, step: 'stopped', effects: [],\n    ids: {}, analysisMode: 'fixture_stub' };\n  if (!['preview', 'check', 'write'].includes(mode)) return state;\n  const intake = JSON.parse(JSON.stringify(bundle?.intake || {}));\n  if (bundle?.fictional !== true || intake.id !== 'pilot-crm-001'\n    || intake.sourceForm !== 'demo' || intake.email !== 'leadops-crm-pilot@example.com') {\n    return { ...state, reason: 'only_the_committed_fictional_fixture_is_allowed' };\n  }\n  if (intake.consent?.contact !== true || !intake.consent.noticeVersion) {\n    return { ...state, status: 'rejected', reason: 'explicit_consent_required' };\n  }\n  const now = new Date(nowIso);\n  if (Number.isNaN(now.getTime())) return { ...state, reason: 'invalid_receiver_time' };\n  intake.consent.recordedAt = now.toISOString();\n  const portalId = String(config.portalId || '').trim();\n  const ownerId = String(config.ownerId || '').trim() || null;\n  if (ownerId !== null && !/^\\d+$/.test(ownerId)) return { ...state, reason: 'invalid_owner_id' };\n  Object.assign(state, { intake, research: bundle.research, qualification: bundle.qualification,\n    portalId, ownerId, dueAt: new Date(now.getTime() + 86400000).toISOString() });\n  if (mode === 'preview') {\n    return { ...state, status: 'preview', reason: 'no_network_or_crm_writes',\n      proposedContact: requestFor('create_contact', { intake, ownerId }).body.properties };\n  }\n  if (mode === 'write' && (config.confirmFictionalWrites !== 'YES_CREATE_DEMO_RECORDS' || !/^\\d+$/.test(portalId))) {\n    return { ...state, reason: 'review_preview_then_confirm_writes_and_portal_id' };\n  }\n  return { ...state, status: 'awaiting_search', reason: 'ready', step: 'search',\n    request: requestFor('search_contact', { propertyName: 'email', value: intake.email }) };\n};\nreturn [{ json: prepare($input.first().json, {\"fictional\":true,\"intake\":{\"id\":\"pilot-crm-001\",\"identityKey\":\"email:leadops-crm-pilot@example.com\",\"email\":\"leadops-crm-pilot@example.com\",\"phone\":null,\"name\":\"LeadOps CRM Pilot (ficticio)\",\"social\":\"\",\"company\":\"Empresa ficticia de demostración\",\"companyWebsite\":\"\",\"message\":\"PRUEBA FICTICIA: necesito una página web. No contactar ni inscribir en campañas.\",\"sourceForm\":\"demo\",\"sourceUrl\":\"\",\"serviceHints\":[\"pagina_web\"],\"plan\":null,\"utm\":{\"utm_source\":\"portfolio\",\"utm_medium\":\"manual_demo\",\"utm_campaign\":\"crm_contract_test\",\"utm_content\":\"unknown\",\"utm_term\":\"unknown\"},\"consent\":{\"contact\":true,\"noticeVersion\":\"fictional-pilot-v1\",\"recordedAt\":\"2026-10-26T00:00:00.000Z\"},\"fingerprint\":\"8804dd85eb108c45d1010423c84fb226934d935b643970d43ae099919ae96f07\"},\"research\":{\"summary\":\"Consulta por página web: PRUEBA FICTICIA: necesito una página web. No contactar ni inscribir en campañas.\",\"verifiedFacts\":[{\"fact\":\"PRUEBA FICTICIA: necesito una página web. No contactar ni inscribir en campañas.\",\"source\":\"intake:message\"}],\"externalFacts\":[],\"missingInformation\":[],\"researchStatus\":\"not_performed\"},\"qualification\":{\"fit\":\"high_fit\",\"certainty\":\"medium\",\"signals\":[{\"signal\":\"Servicio alineado: pagina_web\",\"source\":\"intake:message\"}],\"missingInformation\":[],\"rationale\":\"El servicio solicitado coincide con la oferta y existe una solicitud concreta.\",\"humanReviewRequired\":true}}, new Date().toISOString(), requestFor) }];"
+      }
+    },
+    {
+      "id": "pilot-search-gate",
+      "name": "¿Consultar CRM?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "pilot-search-gate-condition",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "awaiting_search",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "pilot-search",
+      "name": "HubSpot · buscar contacto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1030,
+        200
+      ],
+      "retryOnFail": false,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://api.hubapi.com\" + $json.request.path }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request.body }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "pilot-search-result",
+      "name": "Evaluar búsqueda",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const requestFor = function hubspotRequest(operation, values = {}) {\n  const objectsPath = '/crm/objects/2026-03';\n  const fail = code => { const error = new Error(code); error.code = code; throw error; };\n  const objectId = value => {\n    const id = String(value ?? '');\n    if (!/^\\d+$/.test(id)) fail('invalid_hubspot_object_id');\n    return id;\n  };\n  const associations = (id, typeId) => [{ to: { id: objectId(id) }, types: [\n    { associationCategory: 'HUBSPOT_DEFINED', associationTypeId: typeId },\n  ] }];\n  const escapeHtml = value => String(value ?? '').replace(/[&<>\"']/g, character => ({\n    '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;',\n  })[character]);\n  const request = (objectType, body) => ({ method: 'POST', path: `${objectsPath}/${objectType}`, body });\n\n  if (operation === 'search_contact') {\n    const { propertyName, value } = values;\n    if (!['email', 'phone'].includes(propertyName) || typeof value !== 'string' || !value) {\n      fail('invalid_contact_search');\n    }\n    return request('contacts/search', {\n      filterGroups: [{ filters: [{ propertyName, operator: 'EQ', value }] }],\n      properties: ['email', 'phone', 'firstname', 'lastname', 'hubspot_owner_id', 'lifecyclestage'], limit: 3,\n    });\n  }\n\n  const { intake, ownerId = null } = values;\n  if (!intake) fail('missing_intake');\n  if (operation === 'create_contact') {\n    const properties = { lifecyclestage: 'lead' };\n    if (intake.email) properties.email = intake.email;\n    if (intake.phone) properties.phone = intake.phone;\n    if (!intake.email && !intake.phone) fail('missing_contact_identity');\n    if (intake.name) properties.firstname = intake.name;\n    if (ownerId != null) properties.hubspot_owner_id = objectId(ownerId);\n    return request('contacts', { properties });\n  }\n\n  if (operation === 'create_note') {\n    const { research, qualification, contactId } = values;\n    const lines = [\n      `LeadOps submission: ${intake.id}`,\n      `Fuente: ${intake.sourceForm}; URL: ${intake.sourceUrl || 'unknown'}`,\n      `UTM: ${JSON.stringify(intake.utm)}`,\n      `Consentimiento para responder: sí; aviso: ${intake.consent.noticeVersion}; registrado: ${intake.consent.recordedAt}`,\n      `Solicitud: ${intake.message || 'Sin mensaje'}`,\n      `Resumen: ${research.summary}`,\n      `Encaje sugerido: ${qualification.fit}; certeza: ${qualification.certainty}; revisión humana obligatoria`,\n      `Motivo: ${qualification.rationale}`,\n      `Faltantes: ${qualification.missingInformation.join(', ') || 'ninguno'}`,\n      ...research.externalFacts.map(item => `Fuente pública: ${item.fact} — ${item.source}`),\n    ];\n    return request('notes', {\n      properties: { hs_timestamp: intake.consent.recordedAt, hs_note_body: lines.map(escapeHtml).join('<br>').slice(0, 12000) },\n      associations: associations(contactId, 202),\n    });\n  }\n\n  if (operation === 'create_task') {\n    const { contactId, dueAt } = values;\n    if (typeof dueAt !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T/.test(dueAt) || Number.isNaN(new Date(dueAt).getTime())) {\n      fail('invalid_task_due_at');\n    }\n    const properties = {\n      hs_timestamp: new Date(dueAt).toISOString(),\n      hs_task_subject: `Revisar consulta LeadOps ${intake.id}`,\n      hs_task_body: 'Revisar la nota, validar encaje y certeza, decidir responsable y siguiente paso. No contactar automáticamente.',\n      hs_task_status: 'NOT_STARTED', hs_task_priority: 'MEDIUM',\n    };\n    if (ownerId != null) properties.hubspot_owner_id = objectId(ownerId);\n    return request('tasks', { properties, associations: associations(contactId, 204) });\n  }\n  fail('unknown_hubspot_operation');\n};\nconst advance = function advanceCrmPilot(state, response, requestFor) {\n  const statusCode = Number.isInteger(response?.statusCode) ? response.statusCode : null;\n  const next = { ...state, request: undefined, effects: [...state.effects], ids: { ...state.ids },\n    step: 'stopped', status: 'blocked', reason: 'provider_error' };\n  if (state.step === 'search') {\n    if (response?.error || statusCode !== 200 || !Array.isArray(response.body?.results)) {\n      return { ...next, reason: statusCode === 401 ? 'invalid_credential'\n        : statusCode === 403 ? 'missing_contact_read_permission' : 'contact_search_failed' };\n    }\n    const matches = response.body.results;\n    if (state.mode === 'check') return { ...next, status: 'connected_read_only', reason: 'contact_search_succeeded', matches: matches.length };\n    if (state.mode !== 'write') return { ...next, reason: 'write_mode_required' };\n    if (matches.length || response.body.total > 0) {\n      // No activity creation on an existing record: a partially completed run needs reconciliation.\n      return { ...next, status: 'manual_review', reason: 'existing_contact_no_writes' };\n    }\n    return { ...next, status: 'awaiting_contact', reason: 'ready', step: 'contact',\n      request: requestFor('create_contact', { intake: state.intake, ownerId: state.ownerId }) };\n  }\n  if (!['contact', 'note', 'task'].includes(state.step) || state.mode !== 'write') {\n    return { ...next, reason: 'invalid_pilot_state' };\n  }\n  const id = String(response?.body?.id || '');\n  if (response?.error || ![200, 201].includes(statusCode) || !/^\\d+$/.test(id)) {\n    return { ...next, status: 'manual_review', reason: `${state.step}_write_requires_reconciliation`,\n      uncertainEffect: state.step };\n  }\n  next.ids[state.step] = id;\n  next.effects.push(`${state.step}_created`);\n  if (state.step === 'task') return { ...next, status: 'complete', reason: 'fictional_crm_smoke_test_complete' };\n  const step = state.step === 'contact' ? 'note' : 'task';\n  return { ...next, status: `awaiting_${step}`, reason: 'ready', step,\n    request: requestFor(step === 'note' ? 'create_note' : 'create_task', {\n      contactId: next.ids.contact, intake: state.intake, research: state.research,\n      qualification: state.qualification, dueAt: state.dueAt, ownerId: state.ownerId,\n    }) };\n};\nreturn [{ json: advance($(\"Preparar prueba ficticia\").first().json, $input.first().json, requestFor) }];"
+      }
+    },
+    {
+      "id": "pilot-contact-gate",
+      "name": "¿Crear contacto ficticio?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1490,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "pilot-contact-gate-condition",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "awaiting_contact",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "pilot-contact",
+      "name": "HubSpot · crear contacto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1720,
+        100
+      ],
+      "retryOnFail": false,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://api.hubapi.com\" + $json.request.path }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request.body }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "pilot-contact-result",
+      "name": "Verificar contacto creado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1950,
+        100
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const requestFor = function hubspotRequest(operation, values = {}) {\n  const objectsPath = '/crm/objects/2026-03';\n  const fail = code => { const error = new Error(code); error.code = code; throw error; };\n  const objectId = value => {\n    const id = String(value ?? '');\n    if (!/^\\d+$/.test(id)) fail('invalid_hubspot_object_id');\n    return id;\n  };\n  const associations = (id, typeId) => [{ to: { id: objectId(id) }, types: [\n    { associationCategory: 'HUBSPOT_DEFINED', associationTypeId: typeId },\n  ] }];\n  const escapeHtml = value => String(value ?? '').replace(/[&<>\"']/g, character => ({\n    '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;',\n  })[character]);\n  const request = (objectType, body) => ({ method: 'POST', path: `${objectsPath}/${objectType}`, body });\n\n  if (operation === 'search_contact') {\n    const { propertyName, value } = values;\n    if (!['email', 'phone'].includes(propertyName) || typeof value !== 'string' || !value) {\n      fail('invalid_contact_search');\n    }\n    return request('contacts/search', {\n      filterGroups: [{ filters: [{ propertyName, operator: 'EQ', value }] }],\n      properties: ['email', 'phone', 'firstname', 'lastname', 'hubspot_owner_id', 'lifecyclestage'], limit: 3,\n    });\n  }\n\n  const { intake, ownerId = null } = values;\n  if (!intake) fail('missing_intake');\n  if (operation === 'create_contact') {\n    const properties = { lifecyclestage: 'lead' };\n    if (intake.email) properties.email = intake.email;\n    if (intake.phone) properties.phone = intake.phone;\n    if (!intake.email && !intake.phone) fail('missing_contact_identity');\n    if (intake.name) properties.firstname = intake.name;\n    if (ownerId != null) properties.hubspot_owner_id = objectId(ownerId);\n    return request('contacts', { properties });\n  }\n\n  if (operation === 'create_note') {\n    const { research, qualification, contactId } = values;\n    const lines = [\n      `LeadOps submission: ${intake.id}`,\n      `Fuente: ${intake.sourceForm}; URL: ${intake.sourceUrl || 'unknown'}`,\n      `UTM: ${JSON.stringify(intake.utm)}`,\n      `Consentimiento para responder: sí; aviso: ${intake.consent.noticeVersion}; registrado: ${intake.consent.recordedAt}`,\n      `Solicitud: ${intake.message || 'Sin mensaje'}`,\n      `Resumen: ${research.summary}`,\n      `Encaje sugerido: ${qualification.fit}; certeza: ${qualification.certainty}; revisión humana obligatoria`,\n      `Motivo: ${qualification.rationale}`,\n      `Faltantes: ${qualification.missingInformation.join(', ') || 'ninguno'}`,\n      ...research.externalFacts.map(item => `Fuente pública: ${item.fact} — ${item.source}`),\n    ];\n    return request('notes', {\n      properties: { hs_timestamp: intake.consent.recordedAt, hs_note_body: lines.map(escapeHtml).join('<br>').slice(0, 12000) },\n      associations: associations(contactId, 202),\n    });\n  }\n\n  if (operation === 'create_task') {\n    const { contactId, dueAt } = values;\n    if (typeof dueAt !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T/.test(dueAt) || Number.isNaN(new Date(dueAt).getTime())) {\n      fail('invalid_task_due_at');\n    }\n    const properties = {\n      hs_timestamp: new Date(dueAt).toISOString(),\n      hs_task_subject: `Revisar consulta LeadOps ${intake.id}`,\n      hs_task_body: 'Revisar la nota, validar encaje y certeza, decidir responsable y siguiente paso. No contactar automáticamente.',\n      hs_task_status: 'NOT_STARTED', hs_task_priority: 'MEDIUM',\n    };\n    if (ownerId != null) properties.hubspot_owner_id = objectId(ownerId);\n    return request('tasks', { properties, associations: associations(contactId, 204) });\n  }\n  fail('unknown_hubspot_operation');\n};\nconst advance = function advanceCrmPilot(state, response, requestFor) {\n  const statusCode = Number.isInteger(response?.statusCode) ? response.statusCode : null;\n  const next = { ...state, request: undefined, effects: [...state.effects], ids: { ...state.ids },\n    step: 'stopped', status: 'blocked', reason: 'provider_error' };\n  if (state.step === 'search') {\n    if (response?.error || statusCode !== 200 || !Array.isArray(response.body?.results)) {\n      return { ...next, reason: statusCode === 401 ? 'invalid_credential'\n        : statusCode === 403 ? 'missing_contact_read_permission' : 'contact_search_failed' };\n    }\n    const matches = response.body.results;\n    if (state.mode === 'check') return { ...next, status: 'connected_read_only', reason: 'contact_search_succeeded', matches: matches.length };\n    if (state.mode !== 'write') return { ...next, reason: 'write_mode_required' };\n    if (matches.length || response.body.total > 0) {\n      // No activity creation on an existing record: a partially completed run needs reconciliation.\n      return { ...next, status: 'manual_review', reason: 'existing_contact_no_writes' };\n    }\n    return { ...next, status: 'awaiting_contact', reason: 'ready', step: 'contact',\n      request: requestFor('create_contact', { intake: state.intake, ownerId: state.ownerId }) };\n  }\n  if (!['contact', 'note', 'task'].includes(state.step) || state.mode !== 'write') {\n    return { ...next, reason: 'invalid_pilot_state' };\n  }\n  const id = String(response?.body?.id || '');\n  if (response?.error || ![200, 201].includes(statusCode) || !/^\\d+$/.test(id)) {\n    return { ...next, status: 'manual_review', reason: `${state.step}_write_requires_reconciliation`,\n      uncertainEffect: state.step };\n  }\n  next.ids[state.step] = id;\n  next.effects.push(`${state.step}_created`);\n  if (state.step === 'task') return { ...next, status: 'complete', reason: 'fictional_crm_smoke_test_complete' };\n  const step = state.step === 'contact' ? 'note' : 'task';\n  return { ...next, status: `awaiting_${step}`, reason: 'ready', step,\n    request: requestFor(step === 'note' ? 'create_note' : 'create_task', {\n      contactId: next.ids.contact, intake: state.intake, research: state.research,\n      qualification: state.qualification, dueAt: state.dueAt, ownerId: state.ownerId,\n    }) };\n};\nreturn [{ json: advance($(\"Evaluar búsqueda\").first().json, $input.first().json, requestFor) }];"
+      }
+    },
+    {
+      "id": "pilot-note-gate",
+      "name": "¿Crear nota?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2180,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "pilot-note-gate-condition",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "awaiting_note",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "pilot-note",
+      "name": "HubSpot · crear nota",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2410,
+        0
+      ],
+      "retryOnFail": false,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://api.hubapi.com\" + $json.request.path }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request.body }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "pilot-note-result",
+      "name": "Verificar nota creada",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const requestFor = function hubspotRequest(operation, values = {}) {\n  const objectsPath = '/crm/objects/2026-03';\n  const fail = code => { const error = new Error(code); error.code = code; throw error; };\n  const objectId = value => {\n    const id = String(value ?? '');\n    if (!/^\\d+$/.test(id)) fail('invalid_hubspot_object_id');\n    return id;\n  };\n  const associations = (id, typeId) => [{ to: { id: objectId(id) }, types: [\n    { associationCategory: 'HUBSPOT_DEFINED', associationTypeId: typeId },\n  ] }];\n  const escapeHtml = value => String(value ?? '').replace(/[&<>\"']/g, character => ({\n    '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;',\n  })[character]);\n  const request = (objectType, body) => ({ method: 'POST', path: `${objectsPath}/${objectType}`, body });\n\n  if (operation === 'search_contact') {\n    const { propertyName, value } = values;\n    if (!['email', 'phone'].includes(propertyName) || typeof value !== 'string' || !value) {\n      fail('invalid_contact_search');\n    }\n    return request('contacts/search', {\n      filterGroups: [{ filters: [{ propertyName, operator: 'EQ', value }] }],\n      properties: ['email', 'phone', 'firstname', 'lastname', 'hubspot_owner_id', 'lifecyclestage'], limit: 3,\n    });\n  }\n\n  const { intake, ownerId = null } = values;\n  if (!intake) fail('missing_intake');\n  if (operation === 'create_contact') {\n    const properties = { lifecyclestage: 'lead' };\n    if (intake.email) properties.email = intake.email;\n    if (intake.phone) properties.phone = intake.phone;\n    if (!intake.email && !intake.phone) fail('missing_contact_identity');\n    if (intake.name) properties.firstname = intake.name;\n    if (ownerId != null) properties.hubspot_owner_id = objectId(ownerId);\n    return request('contacts', { properties });\n  }\n\n  if (operation === 'create_note') {\n    const { research, qualification, contactId } = values;\n    const lines = [\n      `LeadOps submission: ${intake.id}`,\n      `Fuente: ${intake.sourceForm}; URL: ${intake.sourceUrl || 'unknown'}`,\n      `UTM: ${JSON.stringify(intake.utm)}`,\n      `Consentimiento para responder: sí; aviso: ${intake.consent.noticeVersion}; registrado: ${intake.consent.recordedAt}`,\n      `Solicitud: ${intake.message || 'Sin mensaje'}`,\n      `Resumen: ${research.summary}`,\n      `Encaje sugerido: ${qualification.fit}; certeza: ${qualification.certainty}; revisión humana obligatoria`,\n      `Motivo: ${qualification.rationale}`,\n      `Faltantes: ${qualification.missingInformation.join(', ') || 'ninguno'}`,\n      ...research.externalFacts.map(item => `Fuente pública: ${item.fact} — ${item.source}`),\n    ];\n    return request('notes', {\n      properties: { hs_timestamp: intake.consent.recordedAt, hs_note_body: lines.map(escapeHtml).join('<br>').slice(0, 12000) },\n      associations: associations(contactId, 202),\n    });\n  }\n\n  if (operation === 'create_task') {\n    const { contactId, dueAt } = values;\n    if (typeof dueAt !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T/.test(dueAt) || Number.isNaN(new Date(dueAt).getTime())) {\n      fail('invalid_task_due_at');\n    }\n    const properties = {\n      hs_timestamp: new Date(dueAt).toISOString(),\n      hs_task_subject: `Revisar consulta LeadOps ${intake.id}`,\n      hs_task_body: 'Revisar la nota, validar encaje y certeza, decidir responsable y siguiente paso. No contactar automáticamente.',\n      hs_task_status: 'NOT_STARTED', hs_task_priority: 'MEDIUM',\n    };\n    if (ownerId != null) properties.hubspot_owner_id = objectId(ownerId);\n    return request('tasks', { properties, associations: associations(contactId, 204) });\n  }\n  fail('unknown_hubspot_operation');\n};\nconst advance = function advanceCrmPilot(state, response, requestFor) {\n  const statusCode = Number.isInteger(response?.statusCode) ? response.statusCode : null;\n  const next = { ...state, request: undefined, effects: [...state.effects], ids: { ...state.ids },\n    step: 'stopped', status: 'blocked', reason: 'provider_error' };\n  if (state.step === 'search') {\n    if (response?.error || statusCode !== 200 || !Array.isArray(response.body?.results)) {\n      return { ...next, reason: statusCode === 401 ? 'invalid_credential'\n        : statusCode === 403 ? 'missing_contact_read_permission' : 'contact_search_failed' };\n    }\n    const matches = response.body.results;\n    if (state.mode === 'check') return { ...next, status: 'connected_read_only', reason: 'contact_search_succeeded', matches: matches.length };\n    if (state.mode !== 'write') return { ...next, reason: 'write_mode_required' };\n    if (matches.length || response.body.total > 0) {\n      // No activity creation on an existing record: a partially completed run needs reconciliation.\n      return { ...next, status: 'manual_review', reason: 'existing_contact_no_writes' };\n    }\n    return { ...next, status: 'awaiting_contact', reason: 'ready', step: 'contact',\n      request: requestFor('create_contact', { intake: state.intake, ownerId: state.ownerId }) };\n  }\n  if (!['contact', 'note', 'task'].includes(state.step) || state.mode !== 'write') {\n    return { ...next, reason: 'invalid_pilot_state' };\n  }\n  const id = String(response?.body?.id || '');\n  if (response?.error || ![200, 201].includes(statusCode) || !/^\\d+$/.test(id)) {\n    return { ...next, status: 'manual_review', reason: `${state.step}_write_requires_reconciliation`,\n      uncertainEffect: state.step };\n  }\n  next.ids[state.step] = id;\n  next.effects.push(`${state.step}_created`);\n  if (state.step === 'task') return { ...next, status: 'complete', reason: 'fictional_crm_smoke_test_complete' };\n  const step = state.step === 'contact' ? 'note' : 'task';\n  return { ...next, status: `awaiting_${step}`, reason: 'ready', step,\n    request: requestFor(step === 'note' ? 'create_note' : 'create_task', {\n      contactId: next.ids.contact, intake: state.intake, research: state.research,\n      qualification: state.qualification, dueAt: state.dueAt, ownerId: state.ownerId,\n    }) };\n};\nreturn [{ json: advance($(\"Verificar contacto creado\").first().json, $input.first().json, requestFor) }];"
+      }
+    },
+    {
+      "id": "pilot-task-gate",
+      "name": "¿Crear tarea?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2870,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "pilot-task-gate-condition",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "awaiting_task",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "pilot-task",
+      "name": "HubSpot · crear tarea",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3100,
+        -100
+      ],
+      "retryOnFail": false,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://api.hubapi.com\" + $json.request.path }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request.body }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "pilot-task-result",
+      "name": "Verificar tarea creada",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3330,
+        -100
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const requestFor = function hubspotRequest(operation, values = {}) {\n  const objectsPath = '/crm/objects/2026-03';\n  const fail = code => { const error = new Error(code); error.code = code; throw error; };\n  const objectId = value => {\n    const id = String(value ?? '');\n    if (!/^\\d+$/.test(id)) fail('invalid_hubspot_object_id');\n    return id;\n  };\n  const associations = (id, typeId) => [{ to: { id: objectId(id) }, types: [\n    { associationCategory: 'HUBSPOT_DEFINED', associationTypeId: typeId },\n  ] }];\n  const escapeHtml = value => String(value ?? '').replace(/[&<>\"']/g, character => ({\n    '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;',\n  })[character]);\n  const request = (objectType, body) => ({ method: 'POST', path: `${objectsPath}/${objectType}`, body });\n\n  if (operation === 'search_contact') {\n    const { propertyName, value } = values;\n    if (!['email', 'phone'].includes(propertyName) || typeof value !== 'string' || !value) {\n      fail('invalid_contact_search');\n    }\n    return request('contacts/search', {\n      filterGroups: [{ filters: [{ propertyName, operator: 'EQ', value }] }],\n      properties: ['email', 'phone', 'firstname', 'lastname', 'hubspot_owner_id', 'lifecyclestage'], limit: 3,\n    });\n  }\n\n  const { intake, ownerId = null } = values;\n  if (!intake) fail('missing_intake');\n  if (operation === 'create_contact') {\n    const properties = { lifecyclestage: 'lead' };\n    if (intake.email) properties.email = intake.email;\n    if (intake.phone) properties.phone = intake.phone;\n    if (!intake.email && !intake.phone) fail('missing_contact_identity');\n    if (intake.name) properties.firstname = intake.name;\n    if (ownerId != null) properties.hubspot_owner_id = objectId(ownerId);\n    return request('contacts', { properties });\n  }\n\n  if (operation === 'create_note') {\n    const { research, qualification, contactId } = values;\n    const lines = [\n      `LeadOps submission: ${intake.id}`,\n      `Fuente: ${intake.sourceForm}; URL: ${intake.sourceUrl || 'unknown'}`,\n      `UTM: ${JSON.stringify(intake.utm)}`,\n      `Consentimiento para responder: sí; aviso: ${intake.consent.noticeVersion}; registrado: ${intake.consent.recordedAt}`,\n      `Solicitud: ${intake.message || 'Sin mensaje'}`,\n      `Resumen: ${research.summary}`,\n      `Encaje sugerido: ${qualification.fit}; certeza: ${qualification.certainty}; revisión humana obligatoria`,\n      `Motivo: ${qualification.rationale}`,\n      `Faltantes: ${qualification.missingInformation.join(', ') || 'ninguno'}`,\n      ...research.externalFacts.map(item => `Fuente pública: ${item.fact} — ${item.source}`),\n    ];\n    return request('notes', {\n      properties: { hs_timestamp: intake.consent.recordedAt, hs_note_body: lines.map(escapeHtml).join('<br>').slice(0, 12000) },\n      associations: associations(contactId, 202),\n    });\n  }\n\n  if (operation === 'create_task') {\n    const { contactId, dueAt } = values;\n    if (typeof dueAt !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T/.test(dueAt) || Number.isNaN(new Date(dueAt).getTime())) {\n      fail('invalid_task_due_at');\n    }\n    const properties = {\n      hs_timestamp: new Date(dueAt).toISOString(),\n      hs_task_subject: `Revisar consulta LeadOps ${intake.id}`,\n      hs_task_body: 'Revisar la nota, validar encaje y certeza, decidir responsable y siguiente paso. No contactar automáticamente.',\n      hs_task_status: 'NOT_STARTED', hs_task_priority: 'MEDIUM',\n    };\n    if (ownerId != null) properties.hubspot_owner_id = objectId(ownerId);\n    return request('tasks', { properties, associations: associations(contactId, 204) });\n  }\n  fail('unknown_hubspot_operation');\n};\nconst advance = function advanceCrmPilot(state, response, requestFor) {\n  const statusCode = Number.isInteger(response?.statusCode) ? response.statusCode : null;\n  const next = { ...state, request: undefined, effects: [...state.effects], ids: { ...state.ids },\n    step: 'stopped', status: 'blocked', reason: 'provider_error' };\n  if (state.step === 'search') {\n    if (response?.error || statusCode !== 200 || !Array.isArray(response.body?.results)) {\n      return { ...next, reason: statusCode === 401 ? 'invalid_credential'\n        : statusCode === 403 ? 'missing_contact_read_permission' : 'contact_search_failed' };\n    }\n    const matches = response.body.results;\n    if (state.mode === 'check') return { ...next, status: 'connected_read_only', reason: 'contact_search_succeeded', matches: matches.length };\n    if (state.mode !== 'write') return { ...next, reason: 'write_mode_required' };\n    if (matches.length || response.body.total > 0) {\n      // No activity creation on an existing record: a partially completed run needs reconciliation.\n      return { ...next, status: 'manual_review', reason: 'existing_contact_no_writes' };\n    }\n    return { ...next, status: 'awaiting_contact', reason: 'ready', step: 'contact',\n      request: requestFor('create_contact', { intake: state.intake, ownerId: state.ownerId }) };\n  }\n  if (!['contact', 'note', 'task'].includes(state.step) || state.mode !== 'write') {\n    return { ...next, reason: 'invalid_pilot_state' };\n  }\n  const id = String(response?.body?.id || '');\n  if (response?.error || ![200, 201].includes(statusCode) || !/^\\d+$/.test(id)) {\n    return { ...next, status: 'manual_review', reason: `${state.step}_write_requires_reconciliation`,\n      uncertainEffect: state.step };\n  }\n  next.ids[state.step] = id;\n  next.effects.push(`${state.step}_created`);\n  if (state.step === 'task') return { ...next, status: 'complete', reason: 'fictional_crm_smoke_test_complete' };\n  const step = state.step === 'contact' ? 'note' : 'task';\n  return { ...next, status: `awaiting_${step}`, reason: 'ready', step,\n    request: requestFor(step === 'note' ? 'create_note' : 'create_task', {\n      contactId: next.ids.contact, intake: state.intake, research: state.research,\n      qualification: state.qualification, dueAt: state.dueAt, ownerId: state.ownerId,\n    }) };\n};\nreturn [{ json: advance($(\"Verificar nota creada\").first().json, $input.first().json, requestFor) }];"
+      }
+    },
+    {
+      "id": "pilot-summary",
+      "name": "Resumen de prueba",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3560,
+        450
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const summarize = function summarizeCrmPilot(state) {\n  const summary = { status: state.status, reason: state.reason, effects: state.effects,\n    analysisMode: 'fixture_stub', ids: state.ids, automaticProspectContact: false };\n  if (state.status === 'preview') {\n    summary.proposedContact = state.proposedContact;\n    summary.proposedActivities = ['Una nota ficticia con trazabilidad', 'Una tarea abierta de revisión humana'];\n    summary.nextStep = 'Use check to test read access. Review the preview before selecting write and confirming demo writes.';\n  }\n  if (state.ids.contact && /^\\d+$/.test(state.portalId)) {\n    summary.contactUrl = `https://app.hubspot.com/contacts/${state.portalId}/record/0-1/${state.ids.contact}`;\n  }\n  return summary;\n};\nreturn $input.all().map(item => ({ json: summarize(item.json) }));"
+      }
+    },
+    {
+      "id": "pilot-guide",
+      "name": "Guía del piloto",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        300,
+        -100
+      ],
+      "parameters": {
+        "width": 650,
+        "height": 280,
+        "content": "## Prueba manual del contrato CRM\n**preview**: muestra el contacto y las actividades previstas; no usa credenciales ni llama a HubSpot.\n\n**check**: busca únicamente el email ficticio. Seleccionar Bearer Auth en el nodo de búsqueda.\n\n**write**: requiere portalId y confirmFictionalWrites=YES_CREATE_DEMO_RECORDS. Seleccionar la credencial en los cuatro nodos HTTP. Crea un contacto, una nota y una tarea solo si el contacto no existe.\n\nAnálisis simulado. Sin correos ni agente IA real. Ante una escritura incierta, revisar el CRM antes de cualquier repetición. No publicar; no es el flujo de producción."
+      }
+    }
+  ],
+  "connections": {
+    "Ejecutar prueba CRM": {
+      "main": [
+        [
+          {
+            "node": "Modo y portal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modo y portal": {
+      "main": [
+        [
+          {
+            "node": "Preparar prueba ficticia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar prueba ficticia": {
+      "main": [
+        [
+          {
+            "node": "¿Consultar CRM?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Consultar CRM?": {
+      "main": [
+        [
+          {
+            "node": "HubSpot · buscar contacto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resumen de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Crear contacto ficticio?": {
+      "main": [
+        [
+          {
+            "node": "HubSpot · crear contacto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resumen de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Crear nota?": {
+      "main": [
+        [
+          {
+            "node": "HubSpot · crear nota",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resumen de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Crear tarea?": {
+      "main": [
+        [
+          {
+            "node": "HubSpot · crear tarea",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resumen de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot · buscar contacto": {
+      "main": [
+        [
+          {
+            "node": "Evaluar búsqueda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluar búsqueda": {
+      "main": [
+        [
+          {
+            "node": "¿Crear contacto ficticio?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot · crear contacto": {
+      "main": [
+        [
+          {
+            "node": "Verificar contacto creado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar contacto creado": {
+      "main": [
+        [
+          {
+            "node": "¿Crear nota?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot · crear nota": {
+      "main": [
+        [
+          {
+            "node": "Verificar nota creada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar nota creada": {
+      "main": [
+        [
+          {
+            "node": "¿Crear tarea?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot · crear tarea": {
+      "main": [
+        [
+          {
+            "node": "Verificar tarea creada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar tarea creada": {
+      "main": [
+        [
+          {
+            "node": "Resumen de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

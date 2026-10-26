@@ -1,0 +1,13 @@
+{
+  "submission_id": "pilot-crm-001",
+  "source_form": "demo",
+  "nombre": "LeadOps CRM Pilot (ficticio)",
+  "email": "leadops-crm-pilot@example.com",
+  "empresa": "Empresa ficticia de demostración",
+  "mensaje": "PRUEBA FICTICIA: necesito una página web. No contactar ni inscribir en campañas.",
+  "consentimiento_contacto": true,
+  "consentimiento_texto_version": "fictional-pilot-v1",
+  "utm_source": "portfolio",
+  "utm_medium": "manual_demo",
+  "utm_campaign": "crm_contract_test"
+}
