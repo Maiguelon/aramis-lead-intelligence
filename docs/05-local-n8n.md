@@ -26,6 +26,10 @@ This imports the reviewed export with ID `aramis-leadops-demo`. On an existing i
 
 The service binds to `127.0.0.1`, so it is reachable only from this computer. It uses local HTTP and restarts with Docker unless explicitly stopped. This is a development instance; external forms cannot deliver webhooks to it from the internet.
 
+The helper first checks the Docker **engine**, with a ten-second response limit. An open Docker Desktop window does not prove its engine is ready. If the helper reports that Docker is unavailable, inspect Docker Desktop's error before retrying; a failed startup can otherwise leave ordinary Docker commands waiting indefinitely. The timeout stops only the helper's own CLI probe.
+
+The helper was checked on 2026-10-26 with the engine stopped (clear failure) and after recovery (successful `Start` and healthy n8n). The [recovery record](09-docker-recovery.md) describes the separate Docker startup failure and the preserved backups.
+
 The bundled JavaScript task runner is sufficient for the demo. n8n currently logs a warning that its optional Python runner is unavailable and that internal runner mode is deprecated. LeadOps uses JavaScript, so neither warning prevents this local test. Review external runners before deploying an always-on production instance.
 
 ## What is saved where
