@@ -1,6 +1,6 @@
+import { hubspotRequest } from './hubspot-contract.mjs';
+
 const API_BASE = 'https://api.hubapi.com';
-// Pinned stable date-based CRM API. Upgrade deliberately, after contract tests.
-const OBJECTS_PATH = '/crm/objects/2026-03';
 
 export class HubSpotError extends Error {
   constructor(code, { status = null, retryable = false, cause } = {}) {
@@ -16,12 +16,6 @@ function objectId(value) {
   const id = String(value ?? '');
   if (!/^\d+$/.test(id)) throw new HubSpotError('invalid_hubspot_object_id');
   return id;
-}
-
-function association(contactId, typeId) {
-  return [{ to: { id: objectId(contactId) }, types: [
-    { associationCategory: 'HUBSPOT_DEFINED', associationTypeId: typeId },
-  ] }];
 }
 
 export function contactRecordUrl(portalId, contactId) {
@@ -61,15 +55,16 @@ export class HubSpotClient {
     const found = new Map();
     for (const [propertyName, value] of [['email', intake.email], ['phone', intake.phone]]) {
       if (!value) continue;
-      const page = await this.request('POST', `${OBJECTS_PATH}/contacts/search`, {
-        filterGroups: [{ filters: [{ propertyName, operator: 'EQ', value }] }],
-        properties: ['email', 'phone', 'firstname', 'lastname', 'hubspot_owner_id', 'lifecyclestage'],
-        limit: 3,
-      });
+      const page = await this.executeOperation('search_contact', { propertyName, value });
       if (!Array.isArray(page.results)) throw new HubSpotError('invalid_search_response');
       for (const contact of page.results) found.set(objectId(contact.id), contact);
     }
     return [...found.values()];
+  }
+
+  async executeOperation(operation, values) {
+    const plan = hubspotRequest(operation, values);
+    return this.request(plan.method, plan.path, plan.body);
   }
 
   async ensureContact(intake) {
@@ -77,13 +72,8 @@ export class HubSpotClient {
     if (matches.length > 1) throw new HubSpotError('ambiguous_existing_contact');
     if (matches.length === 1) return { contact: matches[0], created: false };
 
-    const properties = { lifecyclestage: 'lead' };
-    if (intake.email) properties.email = intake.email;
-    if (intake.phone) properties.phone = intake.phone;
-    if (intake.name) properties.firstname = intake.name;
-    if (this.ownerId) properties.hubspot_owner_id = this.ownerId;
     try {
-      const contact = await this.request('POST', `${OBJECTS_PATH}/contacts`, { properties });
+      const contact = await this.executeOperation('create_contact', { intake, ownerId: this.ownerId });
       objectId(contact.id);
       return { contact, created: true };
     } catch (error) {
@@ -96,41 +86,13 @@ export class HubSpotClient {
   }
 
   async createIntakeNote(contactId, { intake, research, qualification }) {
-    const lines = [
-      `LeadOps submission: ${intake.id}`,
-      `Fuente: ${intake.sourceForm}; URL: ${intake.sourceUrl || 'unknown'}`,
-      `UTM: ${JSON.stringify(intake.utm)}`,
-      `Consentimiento para responder: sí; aviso: ${intake.consent.noticeVersion}; registrado: ${intake.consent.recordedAt}`,
-      `Solicitud: ${intake.message || 'Sin mensaje'}`,
-      `Resumen: ${research.summary}`,
-      `Encaje sugerido: ${qualification.fit}; certeza: ${qualification.certainty}; revisión humana obligatoria`,
-      `Motivo: ${qualification.rationale}`,
-      `Faltantes: ${qualification.missingInformation.join(', ') || 'ninguno'}`,
-      ...research.externalFacts.map(item => `Fuente pública: ${item.fact} — ${item.source}`),
-    ];
-    const note = await this.request('POST', `${OBJECTS_PATH}/notes`, {
-      properties: { hs_timestamp: intake.consent.recordedAt, hs_note_body: lines.join('\n').slice(0, 12000) },
-      associations: association(contactId, 202),
-    });
+    const note = await this.executeOperation('create_note', { contactId, intake, research, qualification });
     objectId(note.id);
     return note;
   }
 
   async createReviewTask(contactId, { intake, dueAt }) {
-    if (!/^\d{4}-\d{2}-\d{2}T/.test(dueAt) || Number.isNaN(new Date(dueAt).getTime())) {
-      throw new HubSpotError('invalid_task_due_at');
-    }
-    const properties = {
-      hs_timestamp: new Date(dueAt).toISOString(),
-      hs_task_subject: `Revisar consulta LeadOps ${intake.id}`,
-      hs_task_body: 'Revisar la nota, validar encaje y certeza, decidir responsable y siguiente paso. No contactar automáticamente.',
-      hs_task_status: 'NOT_STARTED',
-      hs_task_priority: 'MEDIUM',
-    };
-    if (this.ownerId) properties.hubspot_owner_id = this.ownerId;
-    const task = await this.request('POST', `${OBJECTS_PATH}/tasks`, {
-      properties, associations: association(contactId, 204),
-    });
+    const task = await this.executeOperation('create_task', { contactId, intake, dueAt, ownerId: this.ownerId });
     objectId(task.id);
     return task;
   }
