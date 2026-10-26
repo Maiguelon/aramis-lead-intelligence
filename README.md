@@ -47,7 +47,7 @@ To rebuild the local n8n instance after a machine or disk change, use the pinned
 | Internal email card | Rendered and tested offline; real delivery not yet connected |
 | n8n visual offline workflow | Imported and executed with n8n 2.41.3; all provider actions simulated |
 | Persistent local n8n runtime | Docker Compose on 2.41.7; demo imported and executed after the rebuild |
-| HubSpot connection check | Read-only workflow export and unit tests; authenticated execution pending |
+| HubSpot connection check | Authenticated native n8n search verified with HTTP 200; no CRM writes |
 | Native manual CRM pilot | Preview/check/write modes; native 2.41.7 preview executed without HTTP calls; authenticated writes pending |
 | Connected HubSpot schema | Object availability, mapped fields and stage/task enum values verified read-only |
 | Live n8n automation and end-to-end pilot | Pending account credentials, persistent event store and portal smoke tests |

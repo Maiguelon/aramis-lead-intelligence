@@ -48,6 +48,18 @@ If the UI does not offer Service Keys or the scope, stop and check the account's
 
 All 31 automated checks passed on 2026-10-26, including success, credential and provider errors, response sanitization, and the workflow's sole allowed search endpoint. The export was also imported successfully with the native n8n 2.41.3 CLI into a fresh isolated validation folder under `.tmp/`, without provider credentials or API execution. This confirms native import, not an authenticated HubSpot connection.
 
-On 2026-10-26 Docker Desktop initially failed with an Inference Manager error. After the [authorized runtime recovery](09-docker-recovery.md), the workflow was imported successfully into the real local n8n 2.41.7 instance. It remains unconfigured and inactive: no authenticated API execution, HubSpot credential or CRM record has been created by the implementation agent.
+On 2026-10-26 Docker Desktop initially failed with an Inference Manager error. After the [authorized runtime recovery](09-docker-recovery.md), the workflow was imported successfully into the real local n8n 2.41.7 instance. It was initially unconfigured and inactive. The user subsequently configured its credential; the successful read check is recorded below. No CRM record has been created by the implementation agent.
 
 The user subsequently completed the local n8n owner setup; its public settings reported setup no longer required and readiness remained `ok`. A separate [manual CRM pilot](10-native-crm-pilot.md), with preview as its default, has also been imported. It extends the same shared request contract to a controlled fictional contact/note/task test after credentials and permissions are ready.
+
+## Authenticated read verified — 2026-10-26
+
+The user created the HubSpot key and saved it directly in a n8n Bearer Auth credential. Only the credential reference, name and type were inspected; its value was not exported or printed.
+
+Before execution, the saved workflow was compared with the reviewed read-only export, accounting for n8n's omitted default JSON/content and Code execution settings. Its graph matched and it had no pinned data. The saved workflow was then executed with n8n 2.41.7, using a separate internal task-broker port so the running editor did not need to stop.
+
+The authenticated search returned **HTTP 200**, `status=connected_read_only`, `reason=contact_search_succeeded`, and zero matches for the single fictional check email. `crmWritesPerformed=false` and `writeAccessVerified=false`. This establishes contact-read access; it does not establish that the whole CRM is empty, verify portal identity, or prove contact/note/task writes.
+
+The sanitized receipt is stored privately at `.local/verification/hubspot-read.json`. The public workflow export still contains no credential references. The remaining CRM steps are to verify associations, enable the necessary write scope and run the controlled fictional pilot; AI and mail provider connections are separate work.
+
+A full private n8n backup was taken after this connection check. All ten file hashes were verified, and a metadata-only check confirmed the saved Bearer credential was present in the backed-up database. The service restarted healthy. Backup data, credential identifiers and encryption material remain excluded from Git.
