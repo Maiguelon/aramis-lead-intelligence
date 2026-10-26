@@ -20,12 +20,13 @@ Lifecycle options observed were `subscriber`, `lead`, `marketingqualifiedlead`, 
 
 This was a schema and permission inspection, not an audit of CRM data. No contact/company counts or sample records were queried, so it establishes neither that the portal is empty nor that it contains only fictional data. Personal identifiers and raw connector responses are deliberately not committed.
 
-## Still to verify
+## Subsequent API verification
 
-1. Service Key availability and contact-read scope in this account.
-2. Authenticated execution of `leadops-hubspot-preflight.json` from n8n.
-3. Note/task association definitions, contact-write scope, and a controlled fictional contact + note + task smoke test.
-4. Internal email delivery and the full intake/replay/failure scenarios with provider credentials.
+The user created a Service Key and saved it in n8n. The authenticated preflight returned HTTP 200. Read-only association queries also returned HTTP 200 and verified note-to-contact type `202` and task-to-contact type `204`.
+
+The authorized fictional pilot searched successfully but contact creation returned HTTP 403 / MISSING_SCOPES; no note/task request followed. A separate exact-email CRM search returned zero matches. No records were created, and the pilot was returned to preview. Connector write availability does not grant the Service Key equivalent access.
+
+Still pending: effective contact-write scope on n8n's selected key; successful contact/note/task creation; internal email delivery; and full intake/replay/failure scenarios with provider credentials. See the [native pilot record](10-native-crm-pilot.md).
 
 ## Local runtime blocker observed during inspection
 

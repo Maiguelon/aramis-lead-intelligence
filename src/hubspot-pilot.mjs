@@ -53,6 +53,11 @@ export function advanceCrmPilot(state, response, requestFor) {
   if (!['contact', 'note', 'task'].includes(state.step) || state.mode !== 'write') {
     return { ...next, reason: 'invalid_pilot_state' };
   }
+  if (statusCode === 401 || statusCode === 403) {
+    return { ...next, status: 'configuration_needed', reason: statusCode === 401
+      ? 'invalid_credential' : 'missing_crm_write_permission',
+      httpStatus: statusCode, rejectedByProvider: true, failedStep: state.step };
+  }
   const id = String(response?.body?.id || '');
   if (response?.error || ![200, 201].includes(statusCode) || !/^\d+$/.test(id)) {
     return { ...next, status: 'manual_review', reason: `${state.step}_write_requires_reconciliation`,
@@ -72,6 +77,9 @@ export function advanceCrmPilot(state, response, requestFor) {
 export function summarizeCrmPilot(state) {
   const summary = { status: state.status, reason: state.reason, effects: state.effects,
     analysisMode: 'fixture_stub', ids: state.ids, automaticProspectContact: false };
+  if (state.rejectedByProvider) {
+    Object.assign(summary, { httpStatus: state.httpStatus, rejectedByProvider: true, failedStep: state.failedStep });
+  }
   if (state.status === 'preview') {
     summary.proposedContact = state.proposedContact;
     summary.proposedActivities = ['Una nota ficticia con trazabilidad', 'Una tarea abierta de revisión humana'];

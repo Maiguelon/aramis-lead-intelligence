@@ -83,6 +83,20 @@ test('provider and ambiguous write outcomes stop the chain without exposing erro
   assert.doesNotMatch(JSON.stringify(result), /private-provider-error/);
 });
 
+test('401 and 403 write rejections are actionable configuration errors, not unknown outcomes', () => {
+  const state = advance(prepare(writeConfig), noMatches);
+  for (const statusCode of [401, 403]) {
+    const result = advance(state, { statusCode, body: { message: 'private-provider-detail' } });
+    assert.equal(result.status, 'configuration_needed');
+    assert.equal(result.rejectedByProvider, true);
+    assert.equal(result.uncertainEffect, undefined);
+    assert.equal(result.request, undefined);
+    assert.deepEqual(result.effects, []);
+    assert.equal(summarizeCrmPilot(result).httpStatus, statusCode);
+    assert.doesNotMatch(JSON.stringify(summarizeCrmPilot(result)), /private-provider-detail/);
+  }
+});
+
 test('native export defaults to preview, has no credentials and wires all branch destinations', async () => {
   const workflow = JSON.parse(await readFile(new URL('../n8n/leadops-hubspot-pilot.json', import.meta.url), 'utf8'));
   const names = new Set(workflow.nodes.map(node => node.name));

@@ -42,13 +42,13 @@ To rebuild the local n8n instance after a machine or disk change, use the pinned
 | --- | --- |
 | Formspree-shaped intake normalization and consent gate | Implemented and tested offline |
 | Bounded research and qualification agents | OpenAI API adapter with mocked tests; real API not yet smoke-tested |
-| HubSpot contact, note and review-task adapter | Date-based 2026-03 API adapter with mocked tests; real portal not yet smoke-tested |
+| HubSpot contact, note and review-task adapter | Date-based 2026-03 API adapter tested offline; real reads/association definitions verified; contact creation rejected for missing key scopes |
 | Idempotent handoff and manual reconciliation states | Implemented and tested offline; production atomic store still required |
 | Internal email card | Rendered and tested offline; real delivery not yet connected |
 | n8n visual offline workflow | Imported and executed with n8n 2.41.3; all provider actions simulated |
 | Persistent local n8n runtime | Docker Compose on 2.41.7; demo imported and executed after the rebuild |
 | HubSpot connection check | Authenticated native n8n search verified with HTTP 200; no CRM writes |
-| Native manual CRM pilot | Preview/check/write modes; native 2.41.7 preview executed without HTTP calls; authenticated writes pending |
+| Native manual CRM pilot | Preview/check/write modes; authenticated contact write rejected with 403, no records created; returned to preview |
 | Connected HubSpot schema | Object availability, mapped fields and stage/task enum values verified read-only |
 | Live n8n automation and end-to-end pilot | Pending account credentials, persistent event store and portal smoke tests |
 

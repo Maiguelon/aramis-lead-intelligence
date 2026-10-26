@@ -40,12 +40,24 @@ Existing contacts are never modified. If the search returns any matching contact
 
 ## Failure handling and limits
 
-Every write result is checked before the next request. Failed or ambiguous writes stop with a reconciliation reason and preserve the IDs already returned. The four HTTP nodes have automatic retries disabled. No provider error body is copied into the final summary.
+Every write result is checked before the next request. HTTP 401/403 write rejections stop with `configuration_needed`, the HTTP status and failed step; they do not imply an unknown write outcome. Other failed or ambiguous writes stop with a reconciliation reason and preserve the IDs already returned. The four HTTP nodes have automatic retries disabled. No provider error body is copied into the final summary.
 
 This is a bounded contract test, **not** the final persistent recovery mechanism. It has no atomic event ledger. Search indexing can be delayed, so an immediate second execution after a timeout is unsafe. Inspect HubSpot by the fixture email and submission marker before any repeat. A partial run is reconciled manually; this pilot does not resume it automatically or guarantee exactly-once execution. See [the production ledger contract](03-recovery.md).
 
 ## Verification record
 
-On 2026-10-26, 41 automated tests passed. The native export was imported and executed successfully with n8n 2.41.7 in a fresh Docker validation instance whose data mount was checked to be isolated from the user's instance. Preview completed with **zero HTTP nodes executed and zero CRM effects**. The live local n8n service remained running throughout that test.
+On 2026-10-26, 42 automated tests passed. The native export was imported and executed successfully with n8n 2.41.7 in a fresh Docker validation instance whose data mount was checked to be isolated from the user's instance. Preview completed with **zero HTTP nodes executed and zero CRM effects**. The live local n8n service remained running throughout that test.
 
-Authenticated read/write execution is still pending the user's HubSpot credential. Native preview success does not prove CRM writes, AI research, mail delivery or production recovery. Regenerate the export with `npm run build:n8n-pilot` after changing the builder or shared contract.
+The saved Bearer credential subsequently passed the authenticated contact search (HTTP 200). A separate read-only probe confirmed the portal's note-to-contact association `202` and task-to-contact association `204`, both with HTTP 200. That metadata probe uses the supported v4 association-labels endpoint; the pilot's object requests retain the dated API contract.
+
+The user authorized the fixed fictional contact, note and task. Its search returned zero matches, but contact creation returned **HTTP 403 / MISSING_SCOPES**. The note and task nodes did not execute. A subsequent exact-email search through the connected CRM also returned zero matches. **No CRM records were created.** The local pilot was returned to preview; the improved permission-error handler was then imported while preserving its credential references and private configuration. That updated pilot also completed native preview with zero HTTP nodes and zero effects; the local service remained healthy. Successful workflow execution alone is not evidence of successful CRM writes: inspect the business result.
+
+Effective `crm.objects.contacts.write` access on the key selected in n8n remains to be resolved before another write attempt. Do not add sensitive-data scopes as a workaround. Native preview and successful reads do not prove CRM writes, AI research, mail delivery or production recovery. Regenerate the export with `npm run build:n8n-pilot` after changing the builder or shared contract.
+
+## Private preparation and receipts
+
+`scripts/prepare-n8n-pilot.mjs` compares the saved inactive, unpinned pilot with the reviewed export before preparing a local import. It accounts for n8n's omitted defaults, preserves operator configuration only where intended, and resolves the saved preflight's Bearer credential by reference and type. It never reads credential values. Workflow snapshots, the prepared import and the read-only association probe are written under the Git-ignored `.local/n8n/leadops-verification/` directory.
+
+The helper defaults to preview. A write preparation additionally requires `--mode write`, a numeric `--portal-id` and `--confirm-fictitious-writes`; preparing a file does not execute it or provide user approval. Use `--owner-id` only after validating the intended reviewer. Do not commit generated private imports or receipts.
+
+The first write attempt has a private intent record, execution receipt and reconciliation record in that directory. Keep previous attempts when resolving configuration and never blindly repeat an unknown outcome. A retry requires checking those records and the CRM first.

@@ -4,7 +4,7 @@ Opening HubSpot in a browser signs the person in; it does not authenticate n8n. 
 
 ## Authentication choice, checked 2026-10-26
 
-Use a **HubSpot Service Key** for this account-level integration. HubSpot has ended new legacy private-app creation: September 28 for new accounts and October 26 for older accounts. Existing private apps still work, but a new pilot should follow the Service Key route. This needs Developer Tools or Super Admin access; availability in Miguel's portal has not yet been inspected.
+Use a **HubSpot Service Key** for this account-level integration. HubSpot has ended new legacy private-app creation: September 28 for new accounts and October 26 for older accounts. Existing private apps still work, but a new pilot should follow the Service Key route. This needs Developer Tools or Super Admin access; Miguel subsequently created and saved a key in this portal.
 
 Service Keys support data reads and writes, not HubSpot event webhooks. LeadOps receives inbound submissions in n8n and calls HubSpot; it does not currently need HubSpot to emit webhooks. OAuth and a distributed app are unnecessary for this single-account pilot.
 
@@ -60,6 +60,12 @@ Before execution, the saved workflow was compared with the reviewed read-only ex
 
 The authenticated search returned **HTTP 200**, `status=connected_read_only`, `reason=contact_search_succeeded`, and zero matches for the single fictional check email. `crmWritesPerformed=false` and `writeAccessVerified=false`. This establishes contact-read access; it does not establish that the whole CRM is empty, verify portal identity, or prove contact/note/task writes.
 
-The sanitized receipt is stored privately at `.local/verification/hubspot-read.json`. The public workflow export still contains no credential references. The remaining CRM steps are to verify associations, enable the necessary write scope and run the controlled fictional pilot; AI and mail provider connections are separate work.
+The sanitized receipt is stored privately at `.local/verification/hubspot-read.json`. The public workflow export still contains no credential references. AI and mail provider connections are separate work.
 
 A full private n8n backup was taken after this connection check. All ten file hashes were verified, and a metadata-only check confirmed the saved Bearer credential was present in the backed-up database. The service restarted healthy. Backup data, credential identifiers and encryption material remain excluded from Git.
+
+## Write permission checkpoint — 2026-10-26
+
+Authenticated read-only association queries verified note/contact and task/contact type IDs. The authorized fictional write pilot then searched successfully but its contact-create request received **403 / MISSING_SCOPES**. No contact, note or task was created; the workflow is back in preview. See the [pilot evidence and limits](10-native-crm-pilot.md).
+
+This distinguishes the person's HubSpot permissions, the separately connected CRM tool, and the scopes effective on n8n's selected key. Inspect that same Service Key, confirm `crm.objects.contacts.write` is selected and save the update. If the token was rotated, replace the saved n8n Bearer value directly in its credential editor. Do not send it through chat or add unrelated sensitive-data permissions. An updated key has not been verified until the actual n8n write succeeds.
