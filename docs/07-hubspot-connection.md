@@ -48,7 +48,7 @@ If the UI does not offer Service Keys or the scope, stop and check the account's
 
 All 31 automated checks passed on 2026-10-26, including success, credential and provider errors, response sanitization, and the workflow's sole allowed search endpoint. The export was also imported successfully with the native n8n 2.41.3 CLI into a fresh isolated validation folder under `.tmp/`, without provider credentials or API execution. This confirms native import, not an authenticated HubSpot connection.
 
-On 2026-10-26 Docker Desktop initially failed with an Inference Manager error. After the [authorized runtime recovery](09-docker-recovery.md), the workflow was imported successfully into the real local n8n 2.41.7 instance. It was initially unconfigured and inactive. The user subsequently configured its credential; the successful read check is recorded below. No CRM record has been created by the implementation agent.
+On 2026-10-26 Docker Desktop initially failed with an Inference Manager error. After the [authorized runtime recovery](09-docker-recovery.md), the workflow was imported successfully into the real local n8n 2.41.7 instance. It was initially unconfigured and inactive. The user subsequently configured its credential; the successful read check and later fictional write test are recorded below.
 
 The user subsequently completed the local n8n owner setup; its public settings reported setup no longer required and readiness remained `ok`. A separate [manual CRM pilot](10-native-crm-pilot.md), with preview as its default, has also been imported. It extends the same shared request contract to a controlled fictional contact/note/task test after credentials and permissions are ready.
 
@@ -68,4 +68,12 @@ A full private n8n backup was taken after this connection check. All ten file ha
 
 Authenticated read-only association queries verified note/contact and task/contact type IDs. The authorized fictional write pilot then searched successfully but its contact-create request received **403 / MISSING_SCOPES**. No contact, note or task was created; the workflow is back in preview. See the [pilot evidence and limits](10-native-crm-pilot.md).
 
-This distinguishes the person's HubSpot permissions, the separately connected CRM tool, and the scopes effective on n8n's selected key. Inspect that same Service Key, confirm `crm.objects.contacts.write` is selected and save the update. If the token was rotated, replace the saved n8n Bearer value directly in its credential editor. Do not send it through chat or add unrelated sensitive-data permissions. An updated key has not been verified until the actual n8n write succeeds.
+This distinguishes the person's HubSpot permissions, the separately connected CRM tool, and the scopes effective on n8n's selected key. A later browser inspection confirmed that contact-write permission was visibly saved and the rejected requests appeared in that same key's logs. The exact cause of the mismatch was not established. Do not assume an operator forgot to save a scope, or add sensitive-data scopes to work around the rejection.
+
+## Replacement key and writes verified — 2026-10-27
+
+The user created another Service Key and replaced its value directly in the saved n8n Bearer credential. The same reviewed pilot, on the same `/crm/objects/2026-03` API contract, then returned HTTP 200 for search and HTTP 201 for each authorized fictional object: contact, associated note and open review task. No API-version workaround or broader scope was added by the implementation agent.
+
+Independent CRM reads verified the new records, expected fields, reviewer and both associations. Repeating the manual pilot found one matching contact and stopped with `existing_contact_no_writes`, zero effects and zero CRM write nodes executed. The pilot was restored to inactive preview. See the [full verification record and remaining limits](10-native-crm-pilot.md).
+
+A fresh private backup includes the updated encrypted credential and verification receipts. Public workflow exports remain credential-free. Real AI, internal mail and production recovery still need separate validation.

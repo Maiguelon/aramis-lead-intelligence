@@ -50,9 +50,28 @@ On 2026-10-26, 42 automated tests passed. The native export was imported and exe
 
 The saved Bearer credential subsequently passed the authenticated contact search (HTTP 200). A separate read-only probe confirmed the portal's note-to-contact association `202` and task-to-contact association `204`, both with HTTP 200. That metadata probe uses the supported v4 association-labels endpoint; the pilot's object requests retain the dated API contract.
 
-The user authorized the fixed fictional contact, note and task. Its search returned zero matches, but contact creation returned **HTTP 403 / MISSING_SCOPES**. The note and task nodes did not execute. A subsequent exact-email search through the connected CRM also returned zero matches. **No CRM records were created.** The local pilot was returned to preview; the improved permission-error handler was then imported while preserving its credential references and private configuration. That updated pilot also completed native preview with zero HTTP nodes and zero effects; the local service remained healthy. Successful workflow execution alone is not evidence of successful CRM writes: inspect the business result.
+The user authorized the fixed fictional contact, note and task. Its search returned zero matches, but contact creation returned **HTTP 403 / MISSING_SCOPES**. The note and task nodes did not execute. A subsequent exact-email search through the connected CRM also returned zero matches. No CRM records were created at that checkpoint. The local pilot was returned to preview; the improved permission-error handler was then imported while preserving its credential references and private configuration. That updated pilot also completed native preview with zero HTTP nodes and zero effects; the local service remained healthy. Successful workflow execution alone is not evidence of successful CRM writes: inspect the business result.
 
-Effective `crm.objects.contacts.write` access on the key selected in n8n remains to be resolved before another write attempt. Do not add sensitive-data scopes as a workaround. Native preview and successful reads do not prove CRM writes, AI research, mail delivery or production recovery. Regenerate the export with `npm run build:n8n-pilot` after changing the builder or shared contract.
+A further attempt with the old key also received 403. Browser inspection confirmed contact-write permission was visibly saved and the same key's logs contained n8n's requests. A separate private v3 compatibility probe failed during search; stored execution data confirmed none of its write nodes ran. It therefore did not establish whether v3 writes worked. Neither the old-key mismatch nor an API-version defect was proven.
+
+### Successful write and repeat — 2026-10-27
+
+The user created a replacement Service Key and saved it directly in n8n. Before another attempt, the earlier receipts and native execution were reconciled, and a fresh authenticated search found zero matches. The reviewed pilot then used the original dated `/crm/objects/2026-03` contract without changing its payloads or adding permissions:
+
+| Check | Observed result |
+| --- | --- |
+| Fictional email search | HTTP 200, zero matches before creation |
+| Contact creation | HTTP 201; fictional identity, lifecycle `lead`, validated reviewer |
+| Note creation | HTTP 201; submission ID, source/UTM, fictional consent evidence and simulated assessment |
+| Task creation | HTTP 201; `NOT_STARTED`, `MEDIUM`, same reviewer, due in 24 hours |
+| Independent read-back | Contact, note and task properties matched the intended values |
+| Association-filtered CRM reads | Exactly one note and one task associated with the fictional contact |
+| Native pilot repeat | HTTP 200 search, one match, `existing_contact_no_writes`, zero write nodes and zero new effects |
+| Final local configuration | Manual pilots inactive, mode `preview`, write confirmation cleared |
+
+The new key resolved the observed blocker; this is not a determination of the old key's failure cause. No v3 fallback was required. Account IDs, owner IDs, credential references, record IDs and raw provider responses stay in private receipts rather than public exports.
+
+This completes the bounded CRM smoke test. Analysis remains `fixture_stub`; real AI research, email delivery and the production event ledger are still pending. Regenerate the export with `npm run build:n8n-pilot` after changing the builder or shared contract.
 
 ## Private preparation and receipts
 

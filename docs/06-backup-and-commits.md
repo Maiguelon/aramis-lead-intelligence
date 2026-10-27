@@ -21,6 +21,8 @@ The output is `.local/backups/<UTC timestamp>/`. It includes the database, insta
 
 On 2026-10-05, a full backup of the rebuilt fictional-demo instance was created and all ten file hashes were verified. It contained both `database.sqlite` and `config`. The script restarted the service successfully; the readiness endpoint returned `ok` and the imported demo remained listed after restart. A restore onto a different machine has not yet been tested.
 
+On 2026-10-27, a new full private backup was taken after the successful authenticated CRM pilot and its no-write repeat check. All 45 file hashes matched the manifest. It includes the database, encryption configuration, updated encrypted Bearer credential, workflow snapshots and verification receipts. Both manual write pilots were inactive and in preview before backup; the service restarted healthy. Credential values were not exported or printed. This remains a backup on the same physical disk, not an off-device copy or a tested restore.
+
 Copy that whole timestamped folder to a secure location on another physical disk or machine. Until you do, the script protects against accidental local changes but **not another disk failure**. No remote backup destination has been configured by this project.
 
 ## Restore after a disk failure

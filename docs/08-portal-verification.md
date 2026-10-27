@@ -26,7 +26,9 @@ The user created a Service Key and saved it in n8n. The authenticated preflight 
 
 The authorized fictional pilot searched successfully but contact creation returned HTTP 403 / MISSING_SCOPES; no note/task request followed. A separate exact-email CRM search returned zero matches. No records were created, and the pilot was returned to preview. Connector write availability does not grant the Service Key equivalent access.
 
-Still pending: effective contact-write scope on n8n's selected key; successful contact/note/task creation; internal email delivery; and full intake/replay/failure scenarios with provider credentials. See the [native pilot record](10-native-crm-pilot.md).
+On 2026-10-27, after the user replaced the Service Key in n8n, the same dated API successfully created the fictional contact, note and task. Independent reads confirmed the mapped values and reviewer; association-filtered searches returned exactly one note and one task on the fictional contact. A repeat of the native manual pilot found the existing contact and executed no write nodes. The workflow was returned to inactive preview.
+
+Still pending: real AI research/qualification, internal email delivery, a production event store and full intake/replay/failure scenarios with provider credentials. The manual pilot's existing-contact stop is not proof of production exactly-once delivery. See the [native pilot record](10-native-crm-pilot.md).
 
 ## Local runtime blocker observed during inspection
 
