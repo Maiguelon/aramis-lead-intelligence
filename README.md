@@ -48,6 +48,7 @@ To rebuild the local n8n instance after a machine or disk change, use the pinned
 | n8n visual offline workflow | Imported and executed with n8n 2.41.3; all provider actions simulated |
 | Persistent local n8n runtime | Docker Compose on 2.41.7; demo imported and executed after the rebuild |
 | HubSpot connection check | Authenticated native n8n search verified with HTTP 200; no CRM writes |
+| OpenAI connection check | Authenticated native model-list GET verified with HTTP 200; no generation performed |
 | Native manual CRM pilot | Authenticated fictional write succeeded; repeat stopped before all write nodes; inactive and restored to preview |
 | Connected HubSpot schema | Object availability, mapped fields and stage/task enum values verified read-only |
 | Live n8n automation and end-to-end pilot | CRM smoke test complete; real AI/mail connections, persistent event store and full-flow validation pending |
@@ -66,5 +67,6 @@ The current Aramis site submits through Formspree Free, which does not provide t
 - [Connected portal verification](docs/08-portal-verification.md)
 - [Docker recovery and verified local runtime](docs/09-docker-recovery.md)
 - [Native n8n CRM pilot and controlled write test](docs/10-native-crm-pilot.md)
+- [OpenAI connection and secret handling](docs/11-openai-connection.md)
 
 Only fake records belong in committed fixtures or screenshots. Never commit API keys, real submissions or personal data. Existing Aramis-Web, GestorAramis and AramisEditorial repositories remain untouched.
