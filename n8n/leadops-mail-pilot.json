@@ -1,0 +1,271 @@
+{
+  "id": "aramis-resend-pilot",
+  "name": "Aramis LeadOps — tarjeta interna Resend (preview por defecto)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "mail-start",
+      "name": "Probar tarjeta interna",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "mail-config",
+      "name": "Modo y correo interno",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        330,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "mail-mode",
+              "name": "mode",
+              "value": "preview",
+              "type": "string"
+            },
+            {
+              "id": "mail-from",
+              "name": "from",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "mail-to",
+              "name": "to",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "mail-portalId",
+              "name": "portalId",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "mail-contactId",
+              "name": "contactId",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "mail-confirmInternalSend",
+              "name": "confirmInternalSend",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "mail-prepare",
+      "name": "Preparar tarjeta ficticia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        570,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "class HubSpotError extends Error {\n  constructor(code, { status = null, retryable = false, cause } = {}) {\n    super(code, { cause });\n    this.name = 'HubSpotError';\n    this.code = code;\n    this.status = status;\n    this.retryable = retryable;\n  }\n}\nfunction objectId(value) {\n  const id = String(value ?? '');\n  if (!/^\\d+$/.test(id)) throw new HubSpotError('invalid_hubspot_object_id');\n  return id;\n}\nfunction contactRecordUrl(portalId, contactId) {\n  return `https://app.hubspot.com/contacts/${objectId(portalId)}/record/0-1/${objectId(contactId)}`;\n}\nfunction escapeHtml(value) {\n  return String(value ?? '').replace(/[&<>\"']/g, character => ({\n    '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;',\n  })[character]);\n}\nfunction row(label, value) {\n  return `<tr><th align=\"left\" style=\"padding:6px 12px 6px 0\">${escapeHtml(label)}</th><td>${escapeHtml(value || 'No informado')}</td></tr>`;\n}\nconst LABELS = {\"high_fit\":\"Buen encaje sugerido\",\"possible_fit\":\"Encaje posible\",\"low_fit\":\"Bajo encaje sugerido\",\"insufficient_information\":\"Información insuficiente\"};\nfunction renderReviewCard({ intake, research, qualification, portalId, contactId }) {\n  const url = contactRecordUrl(portalId, contactId);\n  const facts = research.externalFacts.map(item => {\n    const safeUrl = /^https:\\/\\//i.test(item.source) ? item.source : null;\n    return `<li>${escapeHtml(item.fact)}${safeUrl ? ` — <a href=\"${escapeHtml(safeUrl)}\">fuente</a>` : ' — fuente no verificada'}</li>`;\n  }).join('');\n  const content = `<!doctype html><html lang=\"es\"><body style=\"font-family:Lato,Arial,sans-serif;color:#1b2a41;max-width:620px;margin:auto\">\n    <div style=\"background:#1b2a41;color:#fff;padding:18px 22px;border-bottom:5px solid #f4b943\"><h1 style=\"margin:0;font-size:21px\">Nueva consulta · revisar</h1></div>\n    <div style=\"padding:20px;border:1px solid #d9e2ed\">\n      <p style=\"background:#fff1cb;padding:10px\"><strong>Revisión humana obligatoria.</strong> La calificación es una recomendación, no una decisión.</p>\n      <h2 style=\"font-size:18px\">${escapeHtml(LABELS[qualification.fit] || 'Sin calificar')} · certeza ${escapeHtml(qualification.certainty)}</h2>\n      <p>${escapeHtml(qualification.rationale)}</p>\n      <table>${row('Persona', intake.name)}${row('Email', intake.email)}${row('Teléfono', intake.phone)}${row('Empresa', intake.company)}${row('Origen', intake.sourceForm)}${row('UTM', [intake.utm.utm_source, intake.utm.utm_medium, intake.utm.utm_campaign].join(' / '))}</table>\n      <h3>Resumen</h3><p>${escapeHtml(research.summary)}</p>\n      <h3>Faltantes</h3><p>${escapeHtml(qualification.missingInformation.join(', ') || 'Ninguno señalado')}</p>\n      ${facts ? `<h3>Fuentes públicas</h3><ul>${facts}</ul>` : '<p>No hubo hallazgos públicos verificados.</p>'}\n      <p><a href=\"${url}\" style=\"background:#8b2634;color:#fff;padding:11px 16px;display:inline-block;text-decoration:none\">Abrir contacto en HubSpot</a></p>\n      <small>ID de entrada: ${escapeHtml(intake.id)} · Consentimiento para responder registrado; no implica permiso para campañas.</small>\n    </div></body></html>`;\n  return {\n    deliveryKey: `leadops-review/${intake.fingerprint}`,\n    subject: `[LeadOps] Revisar ${intake.name || intake.email || intake.phone || intake.id}`.replace(/[\\r\\n]+/g, ' ').slice(0, 180),\n    html: content,\n    text: `Revisión humana obligatoria. ${LABELS[qualification.fit] || 'Sin calificar'}; certeza ${qualification.certainty}. ${research.summary}\\nAbrir en HubSpot: ${url}`,\n  };\n}\nconst requestFor = function resendRequest(card, { from, to } = {}) {\n  const fail = code => { const error = new Error(code); error.code = code; throw error; };\n  const email = /^[^\\s<>@,;]+@[^\\s<>@,;]+\\.[^\\s<>@,;]+$/;\n  if (typeof to !== 'string' || !email.test(to)) fail('invalid_internal_recipient');\n  const sender = typeof from === 'string' ? (from.match(/^[^<>\\r\\n]+<([^<>]+)>$/)?.[1] || from).trim() : '';\n  if (!email.test(sender) || /[\\r\\n]/.test(from)) fail('invalid_internal_sender');\n  if (!/^leadops-review\\/[a-f0-9]{64}$/.test(card?.deliveryKey || '')) fail('invalid_mail_delivery_key');\n  if (typeof card.subject !== 'string' || !card.subject.trim() || card.subject.length > 180 || /[\\r\\n]/.test(card.subject)) fail('invalid_mail_subject');\n  if (typeof card.html !== 'string' || !card.html || card.html.length > 100000\n    || typeof card.text !== 'string' || !card.text || card.text.length > 20000) fail('invalid_mail_content');\n  // Recipient and sender come only from trusted operations configuration, never the lead.\n  return { method: 'POST', url: 'https://api.resend.com/emails',\n    headers: { 'Idempotency-Key': card.deliveryKey },\n    body: { from, to: [to], subject: card.subject, html: card.html, text: card.text,\n      tags: [{ name: 'system', value: 'aramis_leadops' }] } };\n};\nconst prepare = function prepareMailPilot(config, bundle, render, requestFor) {\n  const base = { status: 'blocked', reason: 'invalid_mode', crmWritesPerformed: false, aiCallsPerformed: false };\n  if (!['preview', 'send'].includes(config?.mode)) return base;\n  const intake = bundle?.intake;\n  if (bundle?.fictional !== true || intake?.id !== 'pilot-crm-001' || intake.sourceForm !== 'demo'\n    || intake.email !== 'leadops-crm-pilot@example.com') return { ...base, reason: 'only_committed_fictional_input_allowed' };\n  if (intake.consent?.contact !== true || !intake.consent.noticeVersion) return { ...base, status: 'rejected', reason: 'explicit_consent_required' };\n  let card;\n  try {\n    card = render({ intake, research: bundle.research, qualification: bundle.qualification,\n      portalId: config.portalId || '123456', contactId: config.contactId || '10000' });\n  } catch { return { ...base, reason: 'invalid_crm_link' }; }\n  card.subject = `[PRUEBA] ${card.subject}`.slice(0, 180);\n  card.html = card.html.replace(/(<body[^>]*>)/, '$1<p style=\"background:#fff1cb;padding:12px\"><strong>Prueba de entrega interna.</strong> Datos ficticios y análisis simulado.</p>');\n  card.text = `PRUEBA DE ENTREGA INTERNA. Datos ficticios y análisis simulado.\\n${card.text}`;\n  const state = { ...base, card, destination: config.to || '', sender: config.from || '' };\n  if (config.mode === 'preview') return { ...state, status: 'preview', reason: 'no_email_sent' };\n  if (config.confirmInternalSend !== 'YES_SEND_INTERNAL_DEMO' || !/^\\d+$/.test(config.portalId || '')\n    || !/^\\d+$/.test(config.contactId || '')) return { ...state, reason: 'review_card_then_confirm_internal_demo' };\n  try { return { ...state, status: 'awaiting_send', reason: 'ready', request: requestFor(card, config) }; }\n  catch (error) { return { ...state, reason: /^[a-z_]{1,80}$/.test(error?.code || '') ? error.code : 'invalid_mail_configuration' }; }\n};\nreturn [{ json: prepare($input.first().json, {\"fictional\":true,\"intake\":{\"id\":\"pilot-crm-001\",\"identityKey\":\"email:leadops-crm-pilot@example.com\",\"email\":\"leadops-crm-pilot@example.com\",\"phone\":null,\"name\":\"LeadOps CRM Pilot (ficticio)\",\"social\":\"\",\"company\":\"Empresa ficticia de demostración\",\"companyWebsite\":\"\",\"message\":\"PRUEBA FICTICIA: necesito una página web. No contactar ni inscribir en campañas.\",\"sourceForm\":\"demo\",\"sourceUrl\":\"\",\"serviceHints\":[\"pagina_web\"],\"plan\":null,\"utm\":{\"utm_source\":\"portfolio\",\"utm_medium\":\"manual_demo\",\"utm_campaign\":\"crm_contract_test\",\"utm_content\":\"unknown\",\"utm_term\":\"unknown\"},\"consent\":{\"contact\":true,\"noticeVersion\":\"fictional-pilot-v1\",\"recordedAt\":\"2026-10-27T00:00:00.000Z\"},\"fingerprint\":\"8804dd85eb108c45d1010423c84fb226934d935b643970d43ae099919ae96f07\"},\"research\":{\"summary\":\"Consulta por página web: PRUEBA FICTICIA: necesito una página web. No contactar ni inscribir en campañas.\",\"verifiedFacts\":[{\"fact\":\"PRUEBA FICTICIA: necesito una página web. No contactar ni inscribir en campañas.\",\"source\":\"intake:message\"}],\"externalFacts\":[],\"missingInformation\":[],\"researchStatus\":\"not_performed\"},\"qualification\":{\"fit\":\"high_fit\",\"certainty\":\"medium\",\"signals\":[{\"signal\":\"Servicio alineado: pagina_web\",\"source\":\"intake:message\"}],\"missingInformation\":[],\"rationale\":\"El servicio solicitado coincide con la oferta y existe una solicitud concreta.\",\"humanReviewRequired\":true}}, renderReviewCard, requestFor) }];"
+      }
+    },
+    {
+      "id": "mail-gate",
+      "name": "¿Enviar prueba interna?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        820,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "mail-send-condition",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "awaiting_send",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "mail-send",
+      "name": "Resend · enviar tarjeta interna",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1070,
+        180
+      ],
+      "retryOnFail": false,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.request.headers[\"Idempotency-Key\"] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request.body }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "mail-result",
+      "name": "Resultado de envío interno",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1330,
+        180
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const summarize = function summarizeMailPilot(state, response, summarizeResponse) {\n  if (state.status !== 'awaiting_send') {\n    return { status: state.status, reason: state.reason, destination: state.destination,\n      crmWritesPerformed: false, aiCallsPerformed: false, emailAccepted: false,\n      ...(state.status === 'preview' ? { card: state.card } : {}) };\n  }\n  const result = summarizeResponse(response);\n  return { ...result, destination: state.destination, crmWritesPerformed: false, aiCallsPerformed: false,\n    emailAccepted: result.status === 'accepted', analysisMode: 'fixture_stub' };\n};\nconst providerSummary = function summarizeResendResponse(response) {\n  const httpStatus = Number.isInteger(response?.statusCode) ? response.statusCode : null;\n  const base = { httpStatus, deliveryConfirmed: false, automaticProspectContact: false };\n  if (response?.error || httpStatus === null || httpStatus >= 500) {\n    return { ...base, status: 'manual_review', reason: 'mail_outcome_requires_reconciliation' };\n  }\n  if (httpStatus === 401 || httpStatus === 403) {\n    return { ...base, status: 'configuration_needed', reason: 'resend_credential_or_domain_permission' };\n  }\n  if (httpStatus === 429) return { ...base, status: 'retry_later', reason: 'resend_rate_or_quota_limit' };\n  if (httpStatus === 409) return { ...base, status: 'manual_review', reason: 'mail_idempotency_requires_reconciliation' };\n  const id = response.body?.id;\n  if ([200, 201].includes(httpStatus) && typeof id === 'string'\n    && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id)) {\n    return { ...base, status: 'accepted', reason: 'resend_accepted_internal_mail', emailId: id };\n  }\n  return { ...base, status: 'manual_review', reason: 'mail_request_or_response_rejected' };\n};\nreturn [{ json: summarize($('Preparar tarjeta ficticia').first().json, $input.first().json, providerSummary) }];"
+      }
+    },
+    {
+      "id": "mail-preview",
+      "name": "Vista previa sin envío",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        500
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const summarize = function summarizeMailPilot(state, response, summarizeResponse) {\n  if (state.status !== 'awaiting_send') {\n    return { status: state.status, reason: state.reason, destination: state.destination,\n      crmWritesPerformed: false, aiCallsPerformed: false, emailAccepted: false,\n      ...(state.status === 'preview' ? { card: state.card } : {}) };\n  }\n  const result = summarizeResponse(response);\n  return { ...result, destination: state.destination, crmWritesPerformed: false, aiCallsPerformed: false,\n    emailAccepted: result.status === 'accepted', analysisMode: 'fixture_stub' };\n};\nreturn $input.all().map(item => ({ json: summarize(item.json) }));"
+      }
+    },
+    {
+      "id": "mail-guide",
+      "name": "Guía de tarjeta interna",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        300,
+        -100
+      ],
+      "parameters": {
+        "width": 660,
+        "height": 310,
+        "content": "## Prueba de entrega de la tarjeta\n**preview**: muestra HTML y texto sin enviar correo. Los IDs CRM sin configurar usan un enlace ficticio de demostración.\n\n**send**: requiere remitente verificado, destinatario interno, IDs CRM reales del contacto ficticio y confirmInternalSend=YES_SEND_INTERNAL_DEMO. Seleccionar la credencial Resend en el nodo HTTP.\n\nDatos ficticios y análisis simulado, claramente etiquetados. No modifica HubSpot ni llama a IA. El destinatario sale solo de la configuración operativa, nunca del formulario del lead.\n\nIdempotency-Key estable por evento; Resend la conserva 24 horas. Sin reintentos automáticos. API aceptada no equivale a entrega confirmada. No publicar."
+      }
+    }
+  ],
+  "connections": {
+    "Probar tarjeta interna": {
+      "main": [
+        [
+          {
+            "node": "Modo y correo interno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modo y correo interno": {
+      "main": [
+        [
+          {
+            "node": "Preparar tarjeta ficticia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar tarjeta ficticia": {
+      "main": [
+        [
+          {
+            "node": "¿Enviar prueba interna?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Enviar prueba interna?": {
+      "main": [
+        [
+          {
+            "node": "Resend · enviar tarjeta interna",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Vista previa sin envío",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resend · enviar tarjeta interna": {
+      "main": [
+        [
+          {
+            "node": "Resultado de envío interno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

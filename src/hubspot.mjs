@@ -22,6 +22,10 @@ export function contactRecordUrl(portalId, contactId) {
   return `https://app.hubspot.com/contacts/${objectId(portalId)}/record/0-1/${objectId(contactId)}`;
 }
 
+export function nativeContactUrlCode() {
+  return [HubSpotError, objectId, contactRecordUrl].map(value => value.toString()).join('\n');
+}
+
 /** Small, injectable API boundary. Tokens and response bodies are never included in errors. */
 export class HubSpotClient {
   constructor({ token, portalId, ownerId = null, fetcher = fetch } = {}) {

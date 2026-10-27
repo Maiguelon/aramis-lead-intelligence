@@ -1,4 +1,4 @@
-import { contactRecordUrl } from './hubspot.mjs';
+import { contactRecordUrl, nativeContactUrlCode } from './hubspot.mjs';
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -36,8 +36,14 @@ export function renderReviewCard({ intake, research, qualification, portalId, co
       <small>ID de entrada: ${escapeHtml(intake.id)} · Consentimiento para responder registrado; no implica permiso para campañas.</small>
     </div></body></html>`;
   return {
+    deliveryKey: `leadops-review/${intake.fingerprint}`,
     subject: `[LeadOps] Revisar ${intake.name || intake.email || intake.phone || intake.id}`.replace(/[\r\n]+/g, ' ').slice(0, 180),
     html: content,
     text: `Revisión humana obligatoria. ${LABELS[qualification.fit] || 'Sin calificar'}; certeza ${qualification.certainty}. ${research.summary}\nAbrir en HubSpot: ${url}`,
   };
+}
+
+export function nativeReviewCardCode() {
+  return [nativeContactUrlCode(), escapeHtml.toString(), row.toString(),
+    `const LABELS = ${JSON.stringify(LABELS)};`, renderReviewCard.toString()].join('\n');
 }

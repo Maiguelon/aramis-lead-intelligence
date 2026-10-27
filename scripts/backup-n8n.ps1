@@ -36,6 +36,17 @@ try {
     Copy-Item -LiteralPath $dataPath -Destination $backupPath -Recurse -Force
     Copy-Item -LiteralPath $composePath -Destination (Join-Path $backupPath 'compose.yaml')
 
+    # Optional operations config stays private alongside the encrypted n8n instance.
+    # Copy opaque files; never inspect or print their contents.
+    $privateConfigPath = Join-Path $backupPath 'private-config'
+    foreach ($relativeConfig in @('.env', '.local\mail-pilot-config.json', '.local\leadops-config.json')) {
+        $configSource = Join-Path $projectRoot $relativeConfig
+        if (Test-Path -LiteralPath $configSource -PathType Leaf) {
+            if (!(Test-Path -LiteralPath $privateConfigPath)) { New-Item -ItemType Directory -Path $privateConfigPath | Out-Null }
+            Copy-Item -LiteralPath $configSource -Destination (Join-Path $privateConfigPath (Split-Path -Leaf $configSource))
+        }
+    }
+
     $manifest = [ordered]@{
         createdAtUtc = (Get-Date).ToUniversalTime().ToString('o')
         project = 'aramis-leadops'
