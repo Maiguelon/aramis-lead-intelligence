@@ -43,7 +43,7 @@ To rebuild the local n8n instance after a machine or disk change, use the pinned
 | Formspree-shaped intake normalization and consent gate | Implemented and tested offline |
 | Bounded research and qualification agents | Two native live analyses verified with fictional inquiries; public company research linked to provider-observed sources; human review enforced |
 | HubSpot contact, note and review-task adapter | Date-based 2026-03 contract verified from n8n: fictional contact, associated note and review task created with HTTP 201 and read back |
-| Idempotent handoff and manual reconciliation states | Implemented and tested offline; production atomic store still required |
+| Idempotent handoff and manual reconciliation states | Native Data Table checkpoints; two concurrent deliveries produced one set of effects; single-server production concurrency fixed at one |
 | Internal email card | Shared HTML/text card delivered through native n8n and Resend to the approved internal recipient; transport test uses labelled simulated analysis |
 | n8n visual offline workflow | Imported and executed with n8n 2.41.3; all provider actions simulated |
 | Persistent local n8n runtime | Docker Compose on 2.41.7; demo imported and executed after the rebuild |
@@ -51,9 +51,16 @@ To rebuild the local n8n instance after a machine or disk change, use the pinned
 | OpenAI connection check | Authenticated native model-list GET verified with HTTP 200; no generation performed |
 | Native manual CRM pilot | Authenticated fictional write succeeded; repeat stopped before all write nodes; inactive and restored to preview |
 | Connected HubSpot schema | Object availability, mapped fields and stage/task enum values verified read-only |
-| Live n8n automation and end-to-end pilot | CRM smoke test complete; real AI/mail connections, persistent event store and full-flow validation pending |
+| Connected n8n end-to-end demo | Fictional intake → HubSpot → two real AI analyses → associated note/task → Resend; returning contact and public company research verified |
+| Basic operating report | Local HTML/JSON from the event table; distinguishes events, contacts, manual fallback and accepted internal alerts |
 
 The current Aramis site submits through Formspree Free, which does not provide the webhook needed for this live trigger. We will not modify the existing website or pretend it already feeds HubSpot. A standalone consented intake or a later form-tier/site change is needed for live traffic.
+
+## Connected local demonstration
+
+The prepared local instance exposes a native n8n form at `http://localhost:5678/form/aramis-leadops` and a closed-fixture JSON endpoint at `POST http://localhost:5678/webhook/aramis-leadops-demo`. Neither accepts arbitrary real people. The public [workflow export](n8n/leadops-integrated.json) is inactive, disabled and credential-free; the private instance binds three separate n8n credentials.
+
+Choose a scenario and explicitly authorize its fictional processing. Repeating a completed scenario demonstrates duplicate handling without another AI call or email. A new inquiry from the same fictional person reuses the contact and creates its own note and review task. After a run, `npm run report` refreshes `.local/reports/operating-report.html` and its JSON companion. See the [connected-demo operating guide](docs/15-connected-demo.md) and [portfolio case study](docs/16-portfolio-case-study.md).
 
 ## Decisions and operating notes
 
@@ -70,5 +77,8 @@ The current Aramis site submits through Formspree Free, which does not provide t
 - [OpenAI connection and secret handling](docs/11-openai-connection.md)
 - [Two native AI analyses and source validation](docs/12-native-ai-pilot.md)
 - [Internal review-card delivery and idempotency](docs/13-internal-mail.md)
+- [Native event table and recovery checkpoints](docs/14-native-event-store.md)
+- [Connected demo, acceptance evidence and operating steps](docs/15-connected-demo.md)
+- [Portfolio case study and interview walkthrough](docs/16-portfolio-case-study.md)
 
 Only fake records belong in committed fixtures or screenshots. Never commit API keys, real submissions or personal data. Existing Aramis-Web, GestorAramis and AramisEditorial repositories remain untouched.

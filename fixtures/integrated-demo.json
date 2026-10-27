@@ -1,0 +1,12 @@
+{
+  "submission_id": "portfolio-e2e-001",
+  "source_form": "demo",
+  "nombre": "LeadOps Portfolio Demo (ficticio)",
+  "email": "leadops-portfolio-demo@example.com",
+  "mensaje": "PRUEBA FICTICIA: necesito una página web para presentar mis servicios de diseño. Aún no definí presupuesto ni fecha. No contactar ni inscribir en campañas.",
+  "consentimiento_contacto": true,
+  "consentimiento_texto_version": "fictional-portfolio-demo-v1",
+  "utm_source": "portfolio",
+  "utm_medium": "local_demo",
+  "utm_campaign": "integrated_leadops"
+}

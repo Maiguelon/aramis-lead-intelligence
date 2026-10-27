@@ -9,7 +9,7 @@ export const LEDGER_COLUMNS = [
 export function nativeLedgerRecord(frame) {
   const eventKey = frame?.intake?.fingerprint;
   if (!/^[a-f0-9]{64}$/.test(eventKey || '')) throw Error('invalid_event_key');
-  const allowedStates = ['contact_unknown', 'note_unknown', 'task_unknown', 'alert_unknown',
+  const allowedStates = ['contact_unknown', 'analysis_unknown', 'note_unknown', 'task_unknown', 'alert_unknown',
     'complete', 'retryable_no_write', 'manual_review'];
   if (!allowedStates.includes(frame.ledgerState)) throw Error('invalid_ledger_state');
   if (typeof frame.receivedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(frame.receivedAt)
