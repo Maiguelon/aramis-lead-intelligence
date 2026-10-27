@@ -10,6 +10,7 @@
     "build:n8n-openai-preflight": "node scripts/build-n8n-openai-preflight.mjs",
     "build:n8n-ai-pilot": "node scripts/build-n8n-openai-pilot.mjs",
     "build:n8n-mail-pilot": "node scripts/build-n8n-mail-pilot.mjs",
+    "build:n8n-ledger": "node scripts/build-n8n-ledger-setup.mjs",
     "build:n8n-pilot": "node scripts/build-n8n-hubspot-pilot.mjs",
     "test": "node --test",
     "check": "node --check src/intake.mjs && node --check src/qualification.mjs && node --check src/openai-agents.mjs && node --check src/hubspot.mjs && node --check src/review-card.mjs && node --check src/pipeline.mjs && node --check src/file-ledger.mjs && node --check src/demo.mjs && node --test"

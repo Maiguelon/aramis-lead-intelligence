@@ -1,0 +1,139 @@
+{
+  "id": "aramis-leadops-ledger-setup",
+  "name": "Aramis LeadOps — preparar registro de eventos",
+  "active": false,
+  "nodes": [
+    {
+      "id": "ledger-setup-start",
+      "name": "Preparar registro",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "ledger-setup-table",
+      "name": "Crear o reutilizar tabla técnica",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        300
+      ],
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "aramis_leadops_events_v1",
+        "columns": {
+          "column": [
+            {
+              "name": "event_key",
+              "type": "string"
+            },
+            {
+              "name": "state",
+              "type": "string"
+            },
+            {
+              "name": "reason",
+              "type": "string"
+            },
+            {
+              "name": "contact_id",
+              "type": "string"
+            },
+            {
+              "name": "note_id",
+              "type": "string"
+            },
+            {
+              "name": "task_id",
+              "type": "string"
+            },
+            {
+              "name": "alert_id",
+              "type": "string"
+            },
+            {
+              "name": "source_form",
+              "type": "string"
+            },
+            {
+              "name": "source_channel",
+              "type": "string"
+            },
+            {
+              "name": "fit",
+              "type": "string"
+            },
+            {
+              "name": "certainty",
+              "type": "string"
+            },
+            {
+              "name": "analysis_mode",
+              "type": "string"
+            },
+            {
+              "name": "attempts",
+              "type": "number"
+            },
+            {
+              "name": "received_at",
+              "type": "date"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      }
+    },
+    {
+      "id": "ledger-setup-summary",
+      "name": "Verificar esquema del registro",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const expected = [{\"name\":\"event_key\",\"type\":\"string\"},{\"name\":\"state\",\"type\":\"string\"},{\"name\":\"reason\",\"type\":\"string\"},{\"name\":\"contact_id\",\"type\":\"string\"},{\"name\":\"note_id\",\"type\":\"string\"},{\"name\":\"task_id\",\"type\":\"string\"},{\"name\":\"alert_id\",\"type\":\"string\"},{\"name\":\"source_form\",\"type\":\"string\"},{\"name\":\"source_channel\",\"type\":\"string\"},{\"name\":\"fit\",\"type\":\"string\"},{\"name\":\"certainty\",\"type\":\"string\"},{\"name\":\"analysis_mode\",\"type\":\"string\"},{\"name\":\"attempts\",\"type\":\"number\"},{\"name\":\"received_at\",\"type\":\"date\"}];\nconst table = $input.first().json;\nconst actual = table.columns || [];\nconst matches = actual.length === expected.length && expected.every(column => actual.some(item => item.name === column.name && item.type === column.type));\nreturn [{ json: { status: matches ? 'ready' : 'schema_requires_review', tableId: table.id, tableName: table.name, columnsMatched: matches, columnCount: actual.length, executionMode: $mode, crmWritesPerformed: false, emailSent: false } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Preparar registro": {
+      "main": [
+        [
+          {
+            "node": "Crear o reutilizar tabla técnica",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear o reutilizar tabla técnica": {
+      "main": [
+        [
+          {
+            "node": "Verificar esquema del registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}
