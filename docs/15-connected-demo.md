@@ -32,6 +32,8 @@ El núcleo normaliza email/teléfono, fuente y UTM, exige evidencia de consentim
 
 HubSpot conserva contacto, lifecycle `lead` para nuevos contactos, responsable, nota de entrada y tarea. Un contacto existente conserva sus campos, lifecycle y responsable; no se sobrescribe información del CRM. La empresa declarada se utiliza como contexto para investigación pública y revisión; la creación/asociación automática del objeto Company queda para el siguiente alcance, con una política de dominio y conflictos aprobada. No se inventan empresas para correos personales.
 
+Durante la inspección del registro se observó que **el propio portal** había asociado una empresa por el dominio ficticio `example.com`. Esa asociación no la crea este flujo ni verifica que sea la empresa declarada. No se cambió la configuración global del portal. Antes de usar tráfico real hay que revisar esta automatización de HubSpot y acordar cómo resolver dominios compartidos, correos personales y empresas declaradas distintas.
+
 La Data Table guarda solo metadatos técnicos. Las ejecuciones de n8n contienen temporalmente los inputs y respuestas; la configuración local conserva siete días, hasta mil ejecuciones. No almacenar ni publicar datos reales en fixtures, capturas o exports de portfolio.
 
 ## Errores y recuperación
