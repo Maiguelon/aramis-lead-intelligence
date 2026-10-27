@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createAgents, agentContext, AgentError } from '../src/openai-agents.mjs';
+import { createAgents, agentContext, AgentError, decodeAgentResponse } from '../src/openai-agents.mjs';
 import { normalizeIntake } from '../src/intake.mjs';
 
 const raw = {
@@ -14,6 +14,7 @@ const intake = normalizeIntake(raw).intake;
 
 function fakeResponse(output, annotations = []) {
   return { ok: true, async json() { return { status: 'completed', output: [
+    ...(annotations.length ? [{ type: 'web_search_call', status: 'completed' }] : []),
     { type: 'message', content: [{ type: 'output_text', text: JSON.stringify(output), annotations }] },
   ] }; } };
 }
@@ -23,6 +24,14 @@ test('agent context removes direct contact details', () => {
   const text = JSON.stringify(context);
   assert.doesNotMatch(text, /person@example\.test|\+54 9 381 555 0101|Test Person/);
   assert.match(text, /Quiero una web/);
+  assert.equal(context.serviceHints, undefined);
+});
+
+test('research cannot claim a performed search without an observed completed web tool call', async () => {
+  const agents = createAgents({ mode: 'openai', key: 'test-key', researchModel: 'test-model',
+    fetcher: async () => fakeResponse({ summary: 'X', verifiedFacts: [], externalFacts: [],
+      missingInformation: [], researchStatus: 'performed' }) });
+  await assert.rejects(agents.research(intake), error => error.code === 'web_search_not_observed');
 });
 
 test('research requests web search only for supplied company and accepts cited facts', async () => {
@@ -47,6 +56,19 @@ test('research rejects external facts without actual API citations', async () =>
       externalFacts: [{ fact: 'Inventado', source: 'https://example.test/about' }],
       missingInformation: [], researchStatus: 'performed' }) });
   await assert.rejects(agents.research(intake), error => error instanceof AgentError && error.code === 'uncited_external_fact');
+});
+
+test('structured research accepts a provider-confirmed opened page and rejects an unfinished one', () => {
+  const output = { summary: 'Empresa', verifiedFacts: [],
+    externalFacts: [{ fact: 'Ofrece servicios web', source: 'https://example.test/' }],
+    missingInformation: [], researchStatus: 'performed' };
+  const payload = { status: 'completed', output: [
+    { type: 'web_search_call', status: 'completed', action: { type: 'open_page', url: 'https://example.test/' } },
+    { type: 'message', content: [{ type: 'output_text', text: JSON.stringify(output), annotations: [] }] },
+  ] };
+  assert.equal(decodeAgentResponse('research', payload).externalFacts.length, 1);
+  payload.output[0].status = 'searching';
+  assert.throws(() => decodeAgentResponse('research', payload), error => error.code === 'uncited_external_fact');
 });
 
 test('qualification requires human review and evidence-backed signals', async () => {

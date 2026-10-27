@@ -81,6 +81,14 @@ test('returning person reuses contact but records distinct inquiry and review ta
   assert.equal(h.alerts.length, 2);
 });
 
+test('live analysis without a web search is not mislabelled as an offline stub', async () => {
+  const h = harness({ agents: { ...createAgents(), mode: 'openai' } });
+  const result = await h.run();
+  assert.equal(result.status, 'complete');
+  assert.equal(result.analysisMode, 'agent');
+  assert.equal(h.notes[0].value.research.researchStatus, 'not_performed');
+});
+
 test('429 after contact and before task is retryable, with no duplicate note', async () => {
   const h = harness({ failTask: Object.assign(new Error('rate limited'), { code: 'hubspot_http_error', status: 429, retryable: true }) });
   const first = await h.run();

@@ -41,7 +41,7 @@ To rebuild the local n8n instance after a machine or disk change, use the pinned
 | Capability | State |
 | --- | --- |
 | Formspree-shaped intake normalization and consent gate | Implemented and tested offline |
-| Bounded research and qualification agents | OpenAI API adapter with mocked tests; real API not yet smoke-tested |
+| Bounded research and qualification agents | Two native live analyses verified with fictional inquiries; public company research linked to provider-observed sources; human review enforced |
 | HubSpot contact, note and review-task adapter | Date-based 2026-03 contract verified from n8n: fictional contact, associated note and review task created with HTTP 201 and read back |
 | Idempotent handoff and manual reconciliation states | Implemented and tested offline; production atomic store still required |
 | Internal email card | Rendered and tested offline; real delivery not yet connected |
@@ -68,5 +68,6 @@ The current Aramis site submits through Formspree Free, which does not provide t
 - [Docker recovery and verified local runtime](docs/09-docker-recovery.md)
 - [Native n8n CRM pilot and controlled write test](docs/10-native-crm-pilot.md)
 - [OpenAI connection and secret handling](docs/11-openai-connection.md)
+- [Two native AI analyses and source validation](docs/12-native-ai-pilot.md)
 
 Only fake records belong in committed fixtures or screenshots. Never commit API keys, real submissions or personal data. Existing Aramis-Web, GestorAramis and AramisEditorial repositories remain untouched.

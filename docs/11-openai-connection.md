@@ -18,7 +18,9 @@ Regenerate the export with `npm run build:n8n-openai-preflight` after changing i
 
 The user saved an OpenAI credential. Its reference and type were inspected without reading its value. The native n8n 2.41.7 workflow was imported into the intended personal project and returned **HTTP 200 / connected_read_only**. Both the `gpt-5.4-mini` alias and `gpt-5.4-mini-2026-03-17` snapshot appeared in the returned catalog. This is an account-availability observation, not an evaluation of their output.
 
-All 45 automated tests passed. The sanitized native receipt and private workflow import are under `.local/n8n/leadops-verification/`, excluded from Git. No model generation occurred in this check. The next block must verify the two analyses with fictional input and the Responses API before claiming live AI support.
+All 45 automated tests passed at the connection checkpoint. The sanitized native receipt and private workflow import are under `.local/n8n/leadops-verification/`, excluded from Git. No model generation occurred in this check. The subsequent [two-agent pilot](12-native-ai-pilot.md) verified actual Responses generation, company research and human-review validation with fictional input; the expanded suite has 54 tests.
+
+A full private backup taken after credential setup contains both saved credential types, the database and encryption configuration. All 47 file hashes matched its manifest, and the service restarted healthy. That backup predates the AI-generation pilot; its portable export is versioned separately.
 
 ## Git exclusions checked
 

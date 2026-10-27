@@ -1,0 +1,12 @@
+{
+  "submission_id": "pilot-ai-001",
+  "source_form": "demo",
+  "nombre": "LeadOps AI Pilot (ficticio)",
+  "email": "leadops-ai-pilot@example.test",
+  "mensaje": "PRUEBA FICTICIA: necesito una página web para presentar mis servicios de diseño. Todavía no definí presupuesto ni fecha de lanzamiento. No contactar ni inscribir en campañas.",
+  "consentimiento_contacto": true,
+  "consentimiento_texto_version": "fictional-ai-pilot-v1",
+  "utm_source": "portfolio",
+  "utm_medium": "manual_demo",
+  "utm_campaign": "ai_contract_test"
+}

@@ -58,12 +58,11 @@ export async function processSubmission(raw, {
 
     let research;
     let qualification;
-    let analysisMode = 'agent';
+    let analysisMode = agents.mode === 'stub' ? 'offline_stub' : 'agent';
     try {
       research = await agents.research(intake);
       qualification = await agents.qualify(intake, research);
       if (qualification.humanReviewRequired !== true) throw new PipelineError('agent_removed_human_review');
-      if (research.researchStatus === 'not_performed') analysisMode = 'offline_stub';
     } catch (error) {
       research = researchStub(intake);
       qualification = manualQualification(error.code || 'error', research);
