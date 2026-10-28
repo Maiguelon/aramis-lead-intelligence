@@ -20,7 +20,7 @@ export function renderReviewCard({ intake, research, qualification, portalId, co
   const url = contactRecordUrl(portalId, contactId);
   const facts = research.externalFacts.map(item => {
     const safeUrl = /^https:\/\//i.test(item.source) ? item.source : null;
-    return `<li>${escapeHtml(item.fact)}${safeUrl ? ` — <a href="${escapeHtml(safeUrl)}">fuente</a>` : ' — fuente no verificada'}</li>`;
+    return `<li>${escapeHtml(item.fact)}${item.confidence ? ` (certeza ${escapeHtml(item.confidence)})` : ''}${safeUrl ? ` — <a href="${escapeHtml(safeUrl)}">fuente</a>` : ' — fuente no verificada'}</li>`;
   }).join('');
   const content = `<!doctype html><html lang="es"><body style="font-family:Lato,Arial,sans-serif;color:#1b2a41;max-width:620px;margin:auto">
     <div style="background:#1b2a41;color:#fff;padding:18px 22px;border-bottom:5px solid #f4b943"><h1 style="margin:0;font-size:21px">Nueva consulta · revisar</h1></div>
@@ -30,6 +30,8 @@ export function renderReviewCard({ intake, research, qualification, portalId, co
       <p>${escapeHtml(qualification.rationale)}</p>
       <table>${row('Persona', intake.name)}${row('Email', intake.email)}${row('Teléfono', intake.phone)}${row('Empresa', intake.company)}${row('Origen', intake.sourceForm)}${row('UTM', [intake.utm.utm_source, intake.utm.utm_medium, intake.utm.utm_campaign].join(' / '))}</table>
       <h3>Resumen</h3><p>${escapeHtml(research.summary)}</p>
+      ${research.identity ? `<h3>Identidad profesional</h3><p>${escapeHtml(research.identity.status)} · certeza ${escapeHtml(research.identity.confidence)}. ${escapeHtml(research.identity.rationale)}</p>` : ''}
+      ${research.sourceChecks?.some(item => item.status !== 'consulted') ? `<p>Fuentes sin verificar: ${research.sourceChecks.filter(item => item.status !== 'consulted').map(item => escapeHtml(item.url) + ' (' + escapeHtml(item.status) + ')').join('; ')}</p>` : ''}
       <h3>Faltantes</h3><p>${escapeHtml(qualification.missingInformation.join(', ') || 'Ninguno señalado')}</p>
       ${facts ? `<h3>Fuentes públicas</h3><ul>${facts}</ul>` : '<p>No hubo hallazgos públicos verificados.</p>'}
       <p><a href="${url}" style="background:#8b2634;color:#fff;padding:11px 16px;display:inline-block;text-decoration:none">Abrir contacto en HubSpot</a></p>

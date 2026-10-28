@@ -47,10 +47,11 @@ export function hubspotRequest(operation, values = {}) {
       `Consentimiento para responder: sí; aviso: ${intake.consent.noticeVersion}; registrado: ${intake.consent.recordedAt}`,
       `Solicitud: ${intake.message || 'Sin mensaje'}`,
       `Resumen: ${research.summary}`,
+      ...(research.identity ? [`Identidad profesional: ${research.identity.status}; certeza: ${research.identity.confidence}; ${research.identity.rationale}`] : []),
       `Encaje sugerido: ${qualification.fit}; certeza: ${qualification.certainty}; revisión humana obligatoria`,
       `Motivo: ${qualification.rationale}`,
       `Faltantes: ${qualification.missingInformation.join(', ') || 'ninguno'}`,
-      ...research.externalFacts.map(item => `Fuente pública: ${item.fact} — ${item.source}`),
+      ...research.externalFacts.map(item => `Fuente pública: ${item.fact}${item.confidence ? ` (certeza ${item.confidence})` : ''} — ${item.source}`),
     ];
     return request('notes', {
       properties: { hs_timestamp: intake.consent.recordedAt, hs_note_body: lines.map(escapeHtml).join('<br>').slice(0, 12000) },

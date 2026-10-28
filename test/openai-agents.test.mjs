@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createAgents, agentContext, AgentError, decodeAgentResponse } from '../src/openai-agents.mjs';
+import { createAgents, agentContext, AgentError, decodeAgentResponse, openAiRequest } from '../src/openai-agents.mjs';
 import { normalizeIntake } from '../src/intake.mjs';
 
 const raw = {
@@ -89,4 +89,33 @@ test('qualification rejects unsupported signal and no-review output', async () =
     error => error.code === 'invalid_qualification_output');
   await assert.rejects(agent({ ...base, signals: [{ signal: 'X', source: 'imaginary' }] }).qualify(intake, { externalFacts: [] }),
     error => error.code === 'unsupported_qualification_signal');
+});
+
+test('professional research needs its explicit notice and contextual anchors; contact details remain excluded', () => {
+  const allowed = { ...intake, name: 'Persona Prueba', social: 'https://www.linkedin.com/in/persona?token=private',
+    consent: { ...intake.consent, professionalResearch: true } };
+  const context = agentContext(allowed);
+  assert.equal(context.professionalResearch.name, 'Persona Prueba');
+  assert.equal(context.professionalResearch.providedProfile, 'https://www.linkedin.com/in/persona');
+  assert.ok(!JSON.stringify(context).includes('person@example.test'));
+  assert.equal(agentContext({ ...allowed, consent: {} }).professionalResearch, undefined);
+  assert.equal(agentContext({ ...allowed, company: '', companyWebsite: '', social: '' }).professionalResearch.name, '');
+  const request = openAiRequest('research', { model: 'test-model', intake: { ...allowed, company: '' } });
+  assert.equal(request.max_tool_calls, 3);
+  assert.match(request.instructions, /never by name alone/);
+  assert.match(request.instructions, /never inactive/);
+});
+
+test('a cited same-name person is insufficient; matched professional identity requires two identifiers', () => {
+  const url = 'https://example.test/team';
+  const result = { summary: 'Consulta', verifiedFacts: [], externalFacts: [{ fact: 'Cargo profesional', source: url, subject: 'person', confidence: 'medium' }],
+    missingInformation: [], researchStatus: 'performed', sourceChecks: [],
+    identity: { status: 'unverified', confidence: 'low', rationale: 'Homónimo posible', matchedOn: [], sources: [url] } };
+  const payload = () => ({ output: [{ type: 'web_search_call', status: 'completed', action: { sources: [{ url }] } },
+    { type: 'message', content: [{ type: 'output_text', text: JSON.stringify(result) }] }] });
+  assert.throws(() => decodeAgentResponse('research', payload()), error => error.code === 'unmatched_person_fact');
+  result.identity.status = 'matched'; result.identity.matchedOn = ['person_name'];
+  assert.throws(() => decodeAgentResponse('research', payload()), error => error.code === 'identity_match_insufficient');
+  result.identity.matchedOn.push('company_domain');
+  assert.equal(decodeAgentResponse('research', payload()).externalFacts.length, 1);
 });
