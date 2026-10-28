@@ -52,9 +52,10 @@ To rebuild the local n8n instance after a machine or disk change, use the pinned
 | Native manual CRM pilot | Authenticated fictional write succeeded; repeat stopped before all write nodes; inactive and restored to preview |
 | Connected HubSpot schema | Object availability, mapped fields and stage/task enum values verified read-only |
 | Connected n8n end-to-end demo | Fictional intake → HubSpot → two real AI analyses → associated note/task → Resend; returning contact and public company research verified |
+| Tally website intake | Contact and calculator submissions verified from the local Aramis website through Tally API → n8n → HubSpot → AI → internal email; two Delivered cards, one reused contact, replay checks passed |
 | Basic operating report | Local HTML/JSON from the event table; distinguishes events, contacts, manual fallback and accepted internal alerts |
 
-The deployed Aramis site currently submits through Formspree Free. With Miguel's authorization, a Tally embed is prepared in Aramis-Web for contact and plan inquiries; local n8n polls persisted submissions so capture can work while the PC is off. The new export defaults to disabled inspection. Connected Tally verification and website deployment are separate from local code completion; see the [Tally intake guide](docs/17-tally-intake.md).
+The deployed Aramis site currently submits through Formspree Free. With Miguel's authorization, Tally embeds in Aramis-Web were tested locally for contact and plan inquiries. Authenticated local n8n polling completed both fictional inquiries, including real AI, HubSpot writes and Delivered internal cards. The local worker is in fictional-pilot mode; the public export is disabled and credential-free. Production website deployment and real-inquiry activation remain pending. See the [Tally intake guide and connected evidence](docs/17-tally-intake.md).
 
 ## Connected local demonstration
 

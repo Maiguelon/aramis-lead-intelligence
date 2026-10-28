@@ -52,8 +52,10 @@ test('shared review card renders in a native Code context and carries a technica
     mensaje: 'Quiero una web', consentimiento_contacto: true, consentimiento_texto_version: 'fictional-v1' },
   { receivedAt: '2026-10-27T00:00:00Z' }).intake;
   const research = researchStub(intake);
+  intake.plan = { posts: 4, pagina: true };
   const render = new Function(`${nativeReviewCardCode()}\nreturn renderReviewCard;`)();
   const rendered = render({ intake, research, qualification: qualifyStub(intake, research), portalId: '123', contactId: '456' });
   assert.match(rendered.deliveryKey, /^leadops-review\/[a-f0-9]{64}$/);
   assert.match(rendered.html, /Revisión humana obligatoria/);
+  assert.match(rendered.html, /4 posts · Página web/);
 });

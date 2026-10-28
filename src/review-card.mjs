@@ -18,6 +18,13 @@ const LABELS = {
 /** Internal alert only; never send this card to a prospect. */
 export function renderReviewCard({ intake, research, qualification, portalId, contactId }) {
   const url = contactRecordUrl(portalId, contactId);
+  const selected = [];
+  for (const [key, label] of [['posts', 'posts'], ['reels', 'reels'], ['folletos', 'folletos']]) {
+    if (Number.isInteger(intake.plan?.[key]) && intake.plan[key] > 0) selected.push(`${intake.plan[key]} ${label}`);
+  }
+  for (const [key, label] of [['ads', 'Gestión Meta Ads'], ['brandbook', 'Brandbook'], ['tarjetas', 'Tarjetas'], ['tiendanube', 'Tiendanube'], ['pagina', 'Página web']]) {
+    if (intake.plan?.[key] === true) selected.push(label);
+  }
   const facts = research.externalFacts.map(item => {
     const safeUrl = /^https:\/\//i.test(item.source) ? item.source : null;
     return `<li>${escapeHtml(item.fact)}${item.confidence ? ` (certeza ${escapeHtml(item.confidence)})` : ''}${safeUrl ? ` — <a href="${escapeHtml(safeUrl)}">fuente</a>` : ' — fuente no verificada'}</li>`;
@@ -28,7 +35,7 @@ export function renderReviewCard({ intake, research, qualification, portalId, co
       <p style="background:#fff1cb;padding:10px"><strong>Revisión humana obligatoria.</strong> La calificación es una recomendación, no una decisión.</p>
       <h2 style="font-size:18px">${escapeHtml(LABELS[qualification.fit] || 'Sin calificar')} · certeza ${escapeHtml(qualification.certainty)}</h2>
       <p>${escapeHtml(qualification.rationale)}</p>
-      <table>${row('Persona', intake.name)}${row('Email', intake.email)}${row('Teléfono', intake.phone)}${row('Empresa', intake.company)}${row('Origen', intake.sourceForm)}${row('UTM', [intake.utm.utm_source, intake.utm.utm_medium, intake.utm.utm_campaign].join(' / '))}</table>
+      <table>${row('Persona', intake.name)}${row('Email', intake.email)}${row('Teléfono', intake.phone)}${row('Empresa', intake.company)}${selected.length ? row('Servicios elegidos', selected.join(' · ')) : ''}${row('Origen', intake.sourceForm)}${row('UTM', [intake.utm.utm_source, intake.utm.utm_medium, intake.utm.utm_campaign].join(' / '))}</table>
       <h3>Resumen</h3><p>${escapeHtml(research.summary)}</p>
       ${research.identity ? `<h3>Identidad profesional</h3><p>${escapeHtml(research.identity.status)} · certeza ${escapeHtml(research.identity.confidence)}. ${escapeHtml(research.identity.rationale)}</p>` : ''}
       ${research.sourceChecks?.some(item => item.status !== 'consulted') ? `<p>Fuentes sin verificar: ${research.sourceChecks.filter(item => item.status !== 'consulted').map(item => escapeHtml(item.url) + ' (' + escapeHtml(item.status) + ')').join('; ')}</p>` : ''}

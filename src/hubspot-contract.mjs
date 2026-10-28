@@ -46,6 +46,7 @@ export function hubspotRequest(operation, values = {}) {
       `UTM: ${JSON.stringify(intake.utm)}`,
       `Consentimiento para responder: sí; aviso: ${intake.consent.noticeVersion}; registrado: ${intake.consent.recordedAt}`,
       `Solicitud: ${intake.message || 'Sin mensaje'}`,
+      ...(intake.plan ? [`Selecciones del cotizador (declaradas): ${JSON.stringify(intake.plan)}`] : []),
       `Resumen: ${research.summary}`,
       ...(research.identity ? [`Identidad profesional: ${research.identity.status}; certeza: ${research.identity.confidence}; ${research.identity.rationale}`] : []),
       `Encaje sugerido: ${qualification.fit}; certeza: ${qualification.certainty}; revisión humana obligatoria`,

@@ -2,7 +2,7 @@
 
 ## Qué incluye
 
-Una entrada ficticia consentida se registra en HubSpot, pasa por dos análisis reales de OpenAI y termina en una nota asociada, una tarea para Miguel y una tarjeta interna enviada por Resend. No hay campañas, mensajes al prospecto ni deals automáticos. El sitio de Aramis permanece intacto.
+Una entrada ficticia consentida se registra en HubSpot, pasa por dos análisis reales de OpenAI y termina en una nota asociada, una tarea para Miguel y una tarjeta interna enviada por Resend. No hay campañas, mensajes al prospecto ni deals automáticos. Esta guía describe la demo cerrada local; la captura desde la web mediante Tally tiene su [guía y evidencia propia](17-tally-intake.md).
 
 El formulario nativo está en `http://localhost:5678/form/aramis-leadops`. El editor del flujo está en `http://localhost:5678/workflow/aramis-leadops-integrated`. La instancia escucha exclusivamente en `127.0.0.1`. El formulario es una interfaz para escenarios ficticios cerrados, no una vía pública para datos reales.
 

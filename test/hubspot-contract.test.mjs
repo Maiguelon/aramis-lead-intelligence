@@ -31,3 +31,11 @@ test('write plans reject missing identity, invalid target IDs and invalid deadli
   assert.throws(() => hubspotRequest('create_task', { intake, contactId: '1', dueAt: 'tomorrow' }), /invalid_task_due_at/);
   assert.throws(() => hubspotRequest('create_task', { intake, contactId: '../1', dueAt: '2026-10-27T12:00:00Z' }), /invalid_hubspot_object_id/);
 });
+
+test('the original calculator choices remain in the CRM note independently of the AI summary', () => {
+  const selected = { ...intake, plan: { posts: 4, pagina: true } };
+  const research = researchStub(selected), qualification = qualifyStub(selected, research);
+  const request = hubspotRequest('create_note', { contactId: '100', intake: selected, research, qualification });
+  assert.match(request.body.properties.hs_note_body, /Selecciones del cotizador/);
+  assert.match(request.body.properties.hs_note_body, /&quot;posts&quot;:4/);
+});

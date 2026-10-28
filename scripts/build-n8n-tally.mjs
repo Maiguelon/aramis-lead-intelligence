@@ -56,7 +56,7 @@ add({ id: 'tally-ledger-all', name: 'Leer registro de eventos', type: 'n8n-nodes
     dataTableId: { __rl: true, mode: 'id', value: '={{ $("Configuración local").first().json.tableId }}' }, returnAll: true } });
 code('tally-prepare', 'Preparar consulta Tally', `${nativeTallyCode()}
 const config=$('Configuración local').first().json;
-const selection=selectTallySubmission($('Comprobar respuesta de Tally').first().json.pages,$input.all().map(i=>i.json),JSON.parse(config.mapping),new Date().toISOString());
+const selection=selectTallySubmission($('Comprobar respuesta de Tally').first().json.pages,$input.all().map(i=>i.json),JSON.parse(config.mapping),new Date().toISOString(),config.processingMode);
 return [{json:prepareTallyFrame(selection,config,new Date().toISOString(),$mode)}];`, [940, -300]);
 gate('tally-rejection-gate', '¿Registrar entrada descartada?', 'record_rejection', 'Preparar rechazo', '¿Entrada aceptada?', [1170, -300]);
 code('tally-rejection-record', 'Preparar rechazo', `const record=${nativeLedgerRecord.toString()}; const frame=$input.first().json;

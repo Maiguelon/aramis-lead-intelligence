@@ -81,7 +81,7 @@ export function prepareTallyFrame(selection, config, receivedAt, mode) {
   if (config.enabled !== 'true' || !['inspect', 'pilot', 'live'].includes(config.processingMode)) {
     return { status: 'blocked', reason: 'tally_processing_disabled' };
   }
-  if (selection.status === 'blocked' || selection.status === 'idle') return { status: selection.status, reason: selection.reason };
+  if (['blocked', 'idle', 'held_for_review'].includes(selection.status)) return { status: selection.status, reason: selection.reason };
   if (!/^[a-f0-9]{64}$/.test(selection.eventKey || '')) return { status: 'blocked', reason: 'tally_event_key_missing' };
   if (config.processingMode === 'inspect') return { status: 'preview', reason: selection.reason, eventKey: selection.eventKey,
     mappedStatus: selection.status, effects: false };
@@ -103,7 +103,7 @@ export function tallyEventKey(formId, submissionId) {
 }
 
 /** Full snapshots only. Incomplete/ambiguous pagination must never look like an empty inbox. */
-export function selectTallySubmission(pages, rows, config, receivedAt) {
+export function selectTallySubmission(pages, rows, config, receivedAt, processingMode = 'inspect') {
   if (!Array.isArray(pages) || !pages.length || pages.length > 10) return { status: 'blocked', reason: 'tally_pages_invalid' };
   const submissions = [], seen = new Set();
   for (let index = 0; index < pages.length; index++) {
@@ -124,13 +124,19 @@ export function selectTallySubmission(pages, rows, config, receivedAt) {
     ledger.set(row.event_key, row);
   }
   submissions.sort((a, b) => String(a.submittedAt).localeCompare(String(b.submittedAt)) || a.id.localeCompare(b.id));
+  let held = 0;
   for (const submission of submissions) {
     const eventKey = tallyEventKey(config.formId, submission.id);
     const prior = ledger.get(eventKey);
     if (prior && (prior.state !== 'retryable_no_write' || !Number.isInteger(prior.attempts) || prior.attempts >= 3)) continue;
     const mapped = mapTallySubmission(submission, config, receivedAt);
+    if (processingMode === 'pilot' && mapped.status === 'accepted'
+      && (!mapped.intake.email?.endsWith('@example.com') || !mapped.intake.message.startsWith('PRUEBA FICTICIA:'))) {
+      held++; continue;
+    }
     return { ...mapped, eventKey, prior: prior || null };
   }
+  if (held) return { status: 'held_for_review', reason: 'pilot_requires_fictional_inquiry', heldCount: held };
   return { status: 'idle', reason: 'no_pending_submissions' };
 }
 

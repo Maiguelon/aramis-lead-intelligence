@@ -85,3 +85,15 @@ test('inspect cannot write; pilot requires closed fictional identity; live needs
   assert.equal(prepareTallyFrame(selection, { ...operations, processingMode: 'live', confirm: 'YES_PROCESS_CONSENTED_INQUIRIES' }, now, 'webhook').status, 'lookup');
   assert.equal(prepareTallyFrame(selection, operations, now, 'manual').status, 'blocked');
 });
+
+test('pilot holds ordinary inquiries without blocking fictional tests or losing the held inquiry for live mode', () => {
+  const ordinary = submission('ordinary001'); ordinary.responses[1].answer = 'ordinary@example.test';
+  const fictional = submission('test002'); fictional.responses[5].answer = 'PRUEBA FICTICIA: consulta de prueba';
+  const pages = [page([ordinary, fictional])];
+  const pilot = selectTallySubmission(pages, [], config, now, 'pilot');
+  assert.equal(pilot.intake.id, 'tally:fakeForm:test002');
+  const held = selectTallySubmission([page([ordinary])], [], config, now, 'pilot');
+  assert.equal(held.status, 'held_for_review');
+  assert.equal(prepareTallyFrame(held, { enabled: 'true', processingMode: 'pilot' }, now, 'trigger').status, 'held_for_review');
+  assert.equal(selectTallySubmission(pages, [], config, now, 'live').intake.id, 'tally:fakeForm:ordinary001');
+});
