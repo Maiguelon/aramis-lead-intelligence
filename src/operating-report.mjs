@@ -6,7 +6,8 @@ export function operatingReport(rows, generatedAt = new Date().toISOString()) {
   return { generatedAt, fictionalDemo: true, events: rows.length,
     duplicateKeys: rows.length - uniqueKeys.size,
     completed: rows.filter(row => row.state === 'complete').length,
-    needsReconciliation: rows.filter(row => row.state !== 'complete' && row.state !== 'retryable_no_write').length,
+    needsReconciliation: rows.filter(row => !['complete', 'retryable_no_write', 'rejected'].includes(row.state)).length,
+    rejected: rows.filter(row => row.state === 'rejected').length,
     safeReadRetries: rows.filter(row => row.state === 'retryable_no_write').length,
     uniqueContacts: new Set(rows.map(row => row.contact_id).filter(Boolean)).size,
     tasksCreated: rows.filter(row => row.task_id).length,
@@ -14,7 +15,7 @@ export function operatingReport(rows, generatedAt = new Date().toISOString()) {
     manualFallbacks: rows.filter(row => row.analysis_mode === 'manual_fallback').length,
     bySource: counts('source_channel'), byFit: counts('fit'), byCertainty: counts('certainty'),
     limits: ['Fictional demonstration; no measured sales or ROI.', 'Email IDs prove API acceptance, not inbox delivery or reading.',
-      'Tasks created are not necessarily still open; check HubSpot.', 'Rejected inputs and duplicate deliveries do not create additional ledger rows.'] };
+      'Tasks created are not necessarily still open; check HubSpot.', 'Tally rejections have one technical ledger row; duplicate deliveries add none. Demo consent rejections stop before the ledger.'] };
 }
 
 export function renderOperatingReport(report, rows, portalId) {
@@ -28,7 +29,7 @@ export function renderOperatingReport(report, rows, portalId) {
         : `https://app.hubspot.com/contacts/${portalId}/objects/0-46/views/all/list?filters=${encodeURIComponent(JSON.stringify([{ property: 'hs_object_id', operator: 'EQ', value: String(id) }]))}&${utm}`;
     return `<a href="${esc(url)}" target="_blank" rel="noreferrer">${kind === 'contact' ? 'Contacto' : kind === 'task' ? 'Tarea' : 'Nota'} ↗</a>`;
   };
-  const tiles = [['Entradas únicas', report.events], ['Completadas', report.completed], ['Contactos', report.uniqueContacts],
+  const tiles = [['Entradas únicas', report.events], ['Completadas', report.completed], ['Contactos', report.uniqueContacts], ['Rechazadas', report.rejected || 0],
     ['Requieren conciliación', report.needsReconciliation], ['Revisión sin IA', report.manualFallbacks], ['Correos aceptados', report.internalEmailsAccepted]];
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aramis LeadOps · Operación</title>
   <style>body{margin:0;background:#f4f6f8;color:#1b2a41;font:16px Arial,sans-serif}header{background:#1b2a41;color:white;border-bottom:5px solid #f4b943;padding:32px max(24px,calc((100vw - 1100px)/2))}main{max-width:1100px;margin:28px auto;padding:0 24px}h1{font-size:34px;margin:8px 0}h2{font-size:22px}small{color:#63718a}.tag{color:#f4b943;font-size:12px;letter-spacing:2px}.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.tile,section{background:white;border:1px solid #dce3eb;border-radius:10px;padding:22px}.tile strong{display:block;font-size:32px;margin:12px 0 0}.tile span{font-size:14px}section{margin-top:22px}.scroll{overflow:auto}table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:14px 10px;text-align:left;border-bottom:1px solid #e5eaf0}a{color:#8b2634}nav a{display:inline-block;margin:10px 20px 0 0;color:#fff}.notice{border-left:4px solid #f4b943;padding-left:14px;line-height:1.6}.meta{display:flex;gap:32px;flex-wrap:wrap}.meta p{margin:8px 0}@media(max-width:700px){.tiles{grid-template-columns:repeat(2,1fr)}h1{font-size:27px}}</style></head>

@@ -21,6 +21,7 @@ services:
       N8N_PERSONALIZATION_ENABLED: "false"
       N8N_UNVERIFIED_PACKAGES_ENABLED: "false"
       N8N_RUNNERS_TASK_TIMEOUT: "60"
+      NODE_FUNCTION_ALLOW_BUILTIN: crypto
       # Lookup + checkpoint is safe only with one production execution at a time.
       # Manual/CLI execution is separately blocked by the connected demo's gate.
       N8N_CONCURRENCY_PRODUCTION_LIMIT: "1"

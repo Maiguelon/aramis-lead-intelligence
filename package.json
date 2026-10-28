@@ -13,6 +13,7 @@
     "build:n8n-mail-pilot": "node scripts/build-n8n-mail-pilot.mjs",
     "build:n8n-ledger": "node scripts/build-n8n-ledger-setup.mjs",
     "build:n8n-integrated": "node scripts/build-n8n-integrated.mjs",
+    "build:n8n-tally": "node scripts/build-n8n-integrated.mjs && node scripts/build-n8n-tally.mjs",
     "build:n8n-report": "node scripts/build-n8n-report.mjs",
     "build:n8n-pilot": "node scripts/build-n8n-hubspot-pilot.mjs",
     "test": "node --test",

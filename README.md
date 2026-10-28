@@ -54,7 +54,7 @@ To rebuild the local n8n instance after a machine or disk change, use the pinned
 | Connected n8n end-to-end demo | Fictional intake → HubSpot → two real AI analyses → associated note/task → Resend; returning contact and public company research verified |
 | Basic operating report | Local HTML/JSON from the event table; distinguishes events, contacts, manual fallback and accepted internal alerts |
 
-The current Aramis site submits through Formspree Free, which does not provide the webhook needed for this live trigger. We will not modify the existing website or pretend it already feeds HubSpot. A standalone consented intake or a later form-tier/site change is needed for live traffic.
+The deployed Aramis site currently submits through Formspree Free. With Miguel's authorization, a Tally embed is prepared in Aramis-Web for contact and plan inquiries; local n8n polls persisted submissions so capture can work while the PC is off. The new export defaults to disabled inspection. Connected Tally verification and website deployment are separate from local code completion; see the [Tally intake guide](docs/17-tally-intake.md).
 
 ## Connected local demonstration
 
@@ -80,5 +80,7 @@ Choose a scenario and explicitly authorize its fictional processing. Repeating a
 - [Native event table and recovery checkpoints](docs/14-native-event-store.md)
 - [Connected demo, acceptance evidence and operating steps](docs/15-connected-demo.md)
 - [Portfolio case study and interview walkthrough](docs/16-portfolio-case-study.md)
+- [Online Tally capture and local polling](docs/17-tally-intake.md)
+- [Professional research, identity and evidence](docs/18-professional-research.md)
 
-Only fake records belong in committed fixtures or screenshots. Never commit API keys, real submissions or personal data. Existing Aramis-Web, GestorAramis and AramisEditorial repositories remain untouched.
+Only fake records belong in committed fixtures or screenshots. Never commit API keys, real submissions or personal data. Aramis-Web changes are explicitly authorized; GestorAramis and AramisEditorial remain read-only.

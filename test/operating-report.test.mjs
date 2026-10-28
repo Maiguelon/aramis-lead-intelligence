@@ -25,3 +25,8 @@ test('report escapes operational values and rejects non-numeric portal links', (
   assert.doesNotMatch(renderOperatingReport(report, rows, '123'), /<script>/);
   assert.throws(() => renderOperatingReport(report, rows, 'bad'));
 });
+
+test('a rejected Tally entry does not inflate uncertain writes or contact counts', () => {
+  const report = operatingReport([{ event_key: 'a', state: 'rejected' }]);
+  assert.equal(report.rejected, 1); assert.equal(report.needsReconciliation, 0); assert.equal(report.uniqueContacts, 0);
+});

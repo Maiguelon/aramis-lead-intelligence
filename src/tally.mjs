@@ -21,13 +21,16 @@ export function mapTallySubmission(submission, config, receivedAt) {
     return stop('blocked', 'tally_mapping_invalid');
   }
   const expected = config.consentAnswer;
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(config.acceptFrom || '') || !Number.isFinite(Date.parse(config.acceptFrom))) {
+    return stop('blocked', 'tally_notice_start_required');
+  }
   if (!(expected === true || (Array.isArray(expected) && expected.length === 1
     && typeof expected[0] === 'string' && expected[0].trim()))) return stop('blocked', 'tally_consent_mapping_invalid');
   if (submission?.formId !== config.formId || !/^[A-Za-z0-9_-]{3,100}$/.test(submission?.id || '')) {
     return stop('blocked', 'tally_source_mismatch');
   }
   if (submission.isCompleted !== true) return stop('rejected', 'tally_submission_incomplete');
-  const submittedAt = typeof submission.submittedAt === 'string' ? Date.parse(submission.submittedAt) : NaN;
+  const submittedAt = /^\d{4}-\d{2}-\d{2}T/.test(submission.submittedAt || '') ? Date.parse(submission.submittedAt) : NaN;
   const receipt = Date.parse(receivedAt);
   if (!Number.isFinite(submittedAt) || !Number.isFinite(receipt) || submittedAt > receipt + 300000) {
     return stop('manual_review', 'tally_timestamp_invalid');
@@ -45,7 +48,7 @@ export function mapTallySubmission(submission, config, receivedAt) {
   if (JSON.stringify(consent) !== JSON.stringify(expected)) return stop('rejected', 'contact_consent_not_explicit');
   const raw = Object.fromEntries(TALLY_FIELDS.filter(key => key !== 'consentimiento_contacto')
     .map(key => [key, typeof answers.get(config.questions[key]) === 'string' ? answers.get(config.questions[key]) : '']));
-  raw.source_form ||= 'footer';
+  raw.source_form ||= 'manual';
   raw.submission_id = `tally:${config.formId}:${submission.id}`;
   raw.consentimiento_contacto = true;
   raw.consentimiento_texto_version = config.noticeVersion;
@@ -54,8 +57,32 @@ export function mapTallySubmission(submission, config, receivedAt) {
     // Browser-supplied source_form must not alter event identity or bypass deduplication.
     result.intake.fingerprint = tallyEventKey(config.formId, submission.id);
     result.intake.provider = 'tally';
+    result.intake.consent.professionalResearch = config.noticeVersion === CONSENT_VERSION;
   }
   return result;
+}
+
+/** Modes are operations settings, never accepted from a submission or webhook request body. */
+export function prepareTallyFrame(selection, config, receivedAt, mode) {
+  if (!['webhook', 'trigger'].includes(mode)) return { status: 'blocked', reason: 'production_execution_required' };
+  if (config.enabled !== 'true' || !['inspect', 'pilot', 'live'].includes(config.processingMode)) {
+    return { status: 'blocked', reason: 'tally_processing_disabled' };
+  }
+  if (selection.status === 'blocked' || selection.status === 'idle') return { status: selection.status, reason: selection.reason };
+  if (!/^[a-f0-9]{64}$/.test(selection.eventKey || '')) return { status: 'blocked', reason: 'tally_event_key_missing' };
+  if (config.processingMode === 'inspect') return { status: 'preview', reason: selection.reason, eventKey: selection.eventKey,
+    mappedStatus: selection.status, effects: false };
+  if (config.processingMode === 'live' && config.confirm !== 'YES_PROCESS_CONSENTED_INQUIRIES') {
+    return { status: 'blocked', reason: 'tally_live_confirmation_required' };
+  }
+  const base = { config, receivedAt, ids: {}, attempts: 1, entryKind: 'tally', fictional: config.processingMode === 'pilot' };
+  if (['rejected', 'manual_review'].includes(selection.status)) return { ...base, status: 'record_rejection', reason: selection.reason,
+    ledgerState: selection.status, intake: { fingerprint: selection.eventKey, sourceForm: 'manual', utm: {} } };
+  if (selection.status !== 'accepted' || selection.intake?.consent?.contact !== true) return { status: 'blocked', reason: 'tally_intake_not_accepted' };
+  if (config.processingMode === 'pilot' && (!selection.intake.email?.endsWith('@example.com')
+    || !selection.intake.message.startsWith('PRUEBA FICTICIA:'))) return { status: 'held_for_review', reason: 'pilot_requires_fictional_inquiry' };
+  if (![config.portalId, config.ownerId].every(value => /^\d+$/.test(value || ''))) return { status: 'blocked', reason: 'crm_configuration_required' };
+  return { ...base, status: 'lookup', reason: 'consented_tally_inquiry', intake: selection.intake, analysisMode: 'openai_live' };
 }
 
 export function tallyEventKey(formId, submissionId) {
@@ -95,5 +122,5 @@ export function selectTallySubmission(pages, rows, config, receivedAt) {
 }
 
 export function nativeTallyCode() {
-  return `${nativeIntakeCode()}\nconst TALLY_FIELDS = ${JSON.stringify(TALLY_FIELDS)};\n${[tallyEventKey, mapTallySubmission, selectTallySubmission].map(fn => fn.toString()).join('\n')}`;
+  return `${nativeIntakeCode()}\nconst TALLY_FIELDS = ${JSON.stringify(TALLY_FIELDS)};\nconst CONSENT_VERSION = ${JSON.stringify(CONSENT_VERSION)};\n${[tallyEventKey, mapTallySubmission, selectTallySubmission, prepareTallyFrame].map(fn => fn.toString()).join('\n')}`;
 }

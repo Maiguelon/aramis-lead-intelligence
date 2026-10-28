@@ -18,6 +18,22 @@ Se aceptan únicamente instantáneas completas de respuestas completadas, con p�
 
 Las claves se guardan en las credenciales cifradas de n8n. La clave de Tally hereda los permisos de la cuenta; actualmente no ofrece permisos finos de solo lectura. Usar una cuenta dedicada y una credencial separada de HubSpot y Resend. No pegar claves en el chat ni en archivos del repositorio. El ID público del formulario no es una clave.
 
-Estado de este bloque: adaptador, definición del borrador y pruebas locales implementados. La creación del formulario, enlace de IDs, flujo de sondeo y prueba conectada se documentarán al verificarse; no se presentan como completados por estas pruebas.
+## Flujo importable y puesta en marcha
+
+`n8n/leadops-tally.json` es un flujo nativo deshabilitado y sin credenciales. Comparte las transiciones revisadas de HubSpot, IA, nota, tarea y correo con la demo existente. Consulta cada cinco minutos, descarga hasta diez páginas de cien respuestas y procesa un envío pendiente por ejecución. Si sigue habiendo páginas al llegar al límite, se bloquea y exige revisar el rango; no omite datos silenciosamente. Para un backlog grande se amplía la estrategia de paginación antes de ponerlo en uso. El modo manual/CLI está bloqueado: la concurrencia de producción de n8n debe permanecer en uno.
+
+Modos de operación, controlados por configuración local y nunca por el formulario:
+
+- `inspect`: mapea y muestra estado técnico, sin guardar eventos ni llamar a CRM/IA/correo.
+- `pilot`: recorre todo el sistema solo con email `@example.com` y mensaje que empiece por `PRUEBA FICTICIA:`. Otras consultas se retienen para revisión.
+- `live`: requiere una habilitación local explícita (`YES_PROCESS_CONSENTED_INQUIRIES`); no se habilita por importar ni por recibir un formulario.
+
+Preparación: guardar «Tally — LeadOps» en n8n; ejecutar `node scripts/prepare-tally-setup.mjs` para generar un flujo privado que crea solo un borrador y se detiene si la cuenta ya contiene formularios. No reintentar una creación incierta sin comprobar primero Tally. Después, enlazar IDs mediante `bindTallyQuestions`, comprobar una respuesta ficticia y guardar solo metadatos en `.local/tally-config.json` (`formId`, `questions`, `consentAnswer`, `noticeVersion`, `acceptFrom`). `acceptFrom` es la fecha desde la que existe ese aviso; cambiarlo requiere revisar respuestas pendientes. Si se modifica el consentimiento en Tally, revisar y versionar de nuevo este contrato antes de activar el sondeo.
+
+`node scripts/prepare-n8n-tally.mjs` prepara la copia privada en modo inspección; `--pilot` limita efectos a datos ficticios. Vincula las cuatro credenciales por tipo/nombre exactos y valida la tabla de eventos, sin leer valores secretos. No sobrescribe un flujo activo ni cambios de usuario. Importar, publicar y reiniciar la instancia local según la guía de n8n; comprobar `POST http://localhost:5678/webhook/aramis-leadops-poll`. La petición no admite campos para cambiar el modo o inyectar un lead.
+
+Estado de este bloque: adaptador, definición del borrador, flujo de sondeo y pruebas locales implementados. La creación del formulario, enlace de IDs y prueba conectada requieren la credencial y se documentan solo después de verificarse. La web se activa por ID público después del piloto; no se ha desplegado.
+
+Verificación local: 86 pruebas de LeadOps pasan; el flujo Tally se importó desactivado en n8n y se comprobó en el editor. El adaptador se ejecutó además en el motor real de n8n con una entrada ficticia: normalización, hash y permiso de investigación correctos, sin llamadas externas. La web compiló y sus dos pruebas de atribución pasan. Esto no sustituye una prueba de Tally → HubSpot → correo. Al activar el sondeo, aplicar `docker compose up -d --wait n8n` para que el servicio principal incorpore el permiso específico del módulo `crypto`; reiniciar sin recrear no aplica cambios de entorno.
 
 Fuentes: [API gratuita](https://tally.so/help/api), [API keys y permisos](https://developers.tally.so/api-reference/api-keys), [creación de formularios](https://developers.tally.so/documentation/creating-a-contact-form), [referencia de API](https://developers.tally.so/api-reference/introduction).

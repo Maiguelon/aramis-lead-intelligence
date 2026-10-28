@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { mapTallySubmission, selectTallySubmission, nativeTallyCode, tallyEventKey } from '../src/tally.mjs';
+import { mapTallySubmission, selectTallySubmission, nativeTallyCode, tallyEventKey, prepareTallyFrame } from '../src/tally.mjs';
 
 const now = '2026-10-27T16:00:00Z';
 const config = { formId: 'fakeForm', noticeVersion: 'test-v1', acceptFrom: '2026-10-27T00:00:00Z',
@@ -61,4 +61,16 @@ test('truncated pages, duplicate snapshots and duplicate ledger keys are visible
 test('native n8n adapter executes the exact same normalization and consent checks', () => {
   const native = new Function('require', `${nativeTallyCode()}; return mapTallySubmission;`)(createRequire(import.meta.url));
   assert.deepEqual(native(submission(), config, now), mapTallySubmission(submission(), config, now));
+});
+
+test('inspect cannot write; pilot requires closed fictional identity; live needs operations confirmation', () => {
+  const selection = selectTallySubmission([page([submission()])], [], config, now);
+  const operations = { enabled: 'true', processingMode: 'inspect', portalId: '123', ownerId: '456' };
+  assert.equal(prepareTallyFrame(selection, operations, now, 'webhook').status, 'preview');
+  assert.equal(prepareTallyFrame(selection, { ...operations, processingMode: 'pilot' }, now, 'trigger').status, 'held_for_review');
+  selection.intake.message = 'PRUEBA FICTICIA: consulta web';
+  assert.equal(prepareTallyFrame(selection, { ...operations, processingMode: 'pilot' }, now, 'trigger').status, 'lookup');
+  assert.equal(prepareTallyFrame(selection, { ...operations, processingMode: 'live' }, now, 'webhook').status, 'blocked');
+  assert.equal(prepareTallyFrame(selection, { ...operations, processingMode: 'live', confirm: 'YES_PROCESS_CONSENTED_INQUIRIES' }, now, 'webhook').status, 'lookup');
+  assert.equal(prepareTallyFrame(selection, operations, now, 'manual').status, 'blocked');
 });
