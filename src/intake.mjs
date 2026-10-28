@@ -125,3 +125,14 @@ export function normalizeIntake(raw, { receivedAt = null } = {}) {
   intake.fingerprint = createHash('sha256').update(`${intake.sourceForm}:${intake.id}`).digest('hex');
   return outcome('accepted', 'ok', intake);
 }
+
+/** Same normalizer in n8n's Code node; only the built-in crypto module is used. */
+export function nativeIntakeCode() {
+  return `const { createHash } = require('crypto');
+const MAX_FIELD = ${MAX_FIELD};
+const UTM_FIELDS = ${JSON.stringify(UTM_FIELDS)};
+const KNOWN_FORMS = new Set(${JSON.stringify([...KNOWN_FORMS])});
+const EMAIL_PATTERN = ${EMAIL_PATTERN};
+const INTERNATIONAL_PHONE = ${INTERNATIONAL_PHONE};
+${[field, lower, email, phone, date, parsePlan, serviceFromPlan, serviceFromText, outcome, normalizeIntake].map(fn => fn.toString()).join('\n')}`;
+}

@@ -39,7 +39,7 @@ try {
     # Optional operations config stays private alongside the encrypted n8n instance.
     # Copy opaque files; never inspect or print their contents.
     $privateConfigPath = Join-Path $backupPath 'private-config'
-    foreach ($relativeConfig in @('.env', '.local\mail-pilot-config.json', '.local\leadops-config.json')) {
+    foreach ($relativeConfig in @('.env', '.local\mail-pilot-config.json', '.local\leadops-config.json', '.local\tally-config.json', '.local\tally-blueprint.json')) {
         $configSource = Join-Path $projectRoot $relativeConfig
         if (Test-Path -LiteralPath $configSource -PathType Leaf) {
             if (!(Test-Path -LiteralPath $privateConfigPath)) { New-Item -ItemType Directory -Path $privateConfigPath | Out-Null }
