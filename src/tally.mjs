@@ -15,9 +15,14 @@ export function mapTallySubmission(submission, config, receivedAt) {
     || !config.questions || !config.noticeVersion || !Object.hasOwn(config, 'consentAnswer')) {
     return stop('blocked', 'tally_mapping_required');
   }
-  const ids = Object.values(config.questions);
+  const entries = Object.entries(config.questions);
+  const ids = entries.map(([key, binding]) => typeof binding === 'string' ? `${binding}:value` : `${binding?.questionId}:${binding?.answerKey}`);
   if (!['nombre', 'contacto', 'consentimiento_contacto'].every(key => typeof config.questions[key] === 'string')
-    || ids.some(id => typeof id !== 'string' || !id) || new Set(ids).size !== ids.length) {
+    || entries.some(([key, binding]) => typeof binding === 'string' ? !binding || binding.length > 120
+      : !binding || typeof binding.questionId !== 'string' || !binding.questionId || binding.questionId.length > 120
+        || binding.answerKey !== key || ![...TALLY_FIELDS, 'plan_title'].includes(key)
+        || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(binding.fieldId || ''))
+    || new Set(ids).size !== ids.length) {
     return stop('blocked', 'tally_mapping_invalid');
   }
   const expected = config.consentAnswer;
@@ -44,10 +49,18 @@ export function mapTallySubmission(submission, config, receivedAt) {
       || (response.submissionId && response.submissionId !== submission.id)) return stop('manual_review', 'tally_responses_invalid');
     answers.set(response.questionId, response.answer);
   }
-  const consent = answers.get(config.questions.consentimiento_contacto);
+  const answer = key => {
+    const binding = config.questions[key];
+    if (typeof binding === 'string') return answers.get(binding);
+    if (!binding) return undefined;
+    const group = answers.get(binding.questionId);
+    return group && typeof group === 'object' && !Array.isArray(group) && Object.hasOwn(group, binding.answerKey)
+      ? group[binding.answerKey] : undefined;
+  };
+  const consent = answer('consentimiento_contacto');
   if (JSON.stringify(consent) !== JSON.stringify(expected)) return stop('rejected', 'contact_consent_not_explicit');
   const raw = Object.fromEntries(TALLY_FIELDS.filter(key => key !== 'consentimiento_contacto')
-    .map(key => [key, typeof answers.get(config.questions[key]) === 'string' ? answers.get(config.questions[key]) : '']));
+    .map(key => [key, typeof answer(key) === 'string' ? answer(key) : '']));
   raw.source_form ||= 'manual';
   raw.submission_id = `tally:${config.formId}:${submission.id}`;
   raw.consentimiento_contacto = true;

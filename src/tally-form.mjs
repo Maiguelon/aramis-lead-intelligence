@@ -28,7 +28,7 @@ export function tallyFormBlueprint(uuid = randomUUID) {
   block('HIDDEN_FIELDS', 'HIDDEN_FIELDS', { hiddenFields: hidden.map(name => {
     const id = uuid(); fields[name] = id; return { uuid: id, name };
   }) });
-  return { request: { status: 'DRAFT', blocks }, fields, noticeVersion: CONSENT_VERSION, consentText: CONSENT_TEXT };
+  return { request: { status: 'DRAFT', settings: { language: 'es' }, blocks }, fields, noticeVersion: CONSENT_VERSION, consentText: CONSENT_TEXT };
 }
 
 /** Fail closed if the provider's question structure cannot bind every expected field uniquely. */
@@ -36,10 +36,14 @@ export function bindTallyQuestions(blueprint, questions) {
   if (!Array.isArray(questions)) throw Error('tally_questions_invalid');
   const bound = {};
   for (const [name, uuid] of Object.entries(blueprint.fields)) {
-    const matches = questions.filter(question => question.fields?.some(field => field.uuid === uuid));
+    const block = blueprint.request.blocks.find(item => item.uuid === uuid);
+    const fieldId = block ? block.groupUuid : uuid;
+    const matches = questions.filter(question => question.fields?.some(field => field.uuid === fieldId
+      && (block ? question.type === block.groupType : question.type === 'HIDDEN_FIELDS' && field.title === name)));
     if (matches.length !== 1 || typeof matches[0].id !== 'string') throw Error(`tally_question_binding_failed:${name}`);
-    bound[name] = matches[0].id;
+    bound[name] = block ? matches[0].id : { questionId: matches[0].id, answerKey: name, fieldId };
   }
-  if (new Set(Object.values(bound)).size !== Object.keys(bound).length) throw Error('tally_question_binding_not_unique');
+  const identities = Object.values(bound).map(value => typeof value === 'string' ? `${value}:value` : `${value.questionId}:${value.answerKey}`);
+  if (new Set(identities).size !== identities.length) throw Error('tally_question_binding_not_unique');
   return bound;
 }

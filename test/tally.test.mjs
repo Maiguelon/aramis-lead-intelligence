@@ -63,6 +63,17 @@ test('native n8n adapter executes the exact same normalization and consent check
   assert.deepEqual(native(submission(), config, now), mapTallySubmission(submission(), config, now));
 });
 
+test('provider groups hidden context in one response object without losing attribution or calculator choices', () => {
+  const hidden = key => ({ questionId: 'hiddenGroup', answerKey: key, fieldId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' });
+  const groupedConfig = { ...config, questions: { ...config.questions, source_form: hidden('source_form'), plan: hidden('plan'), utm_source: hidden('utm_source') } };
+  const entry = submission(); entry.responses = entry.responses.filter(value => !['q4', 'q5'].includes(value.questionId));
+  entry.responses.push({ questionId: 'hiddenGroup', answer: { source_form: 'plan_card', utm_source: 'portfolio', plan: JSON.stringify({ selections: { posts: 4, pagina: true } }) } });
+  const result = mapTallySubmission(entry, groupedConfig, now);
+  assert.equal(result.status, 'accepted'); assert.equal(result.intake.sourceForm, 'plan_card');
+  assert.equal(result.intake.utm.utm_source, 'portfolio'); assert.deepEqual(result.intake.plan, { posts: 4, pagina: true });
+  assert.equal(mapTallySubmission(entry, { ...groupedConfig, questions: { ...groupedConfig.questions, source_form: { ...hidden('source_form'), answerKey: 'utm_source' } } }, now).status, 'blocked');
+});
+
 test('inspect cannot write; pilot requires closed fictional identity; live needs operations confirmation', () => {
   const selection = selectTallySubmission([page([submission()])], [], config, now);
   const operations = { enabled: 'true', processingMode: 'inspect', portalId: '123', ownerId: '456' };
